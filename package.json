@@ -1,35 +1,40 @@
 {
-  "name": "mysql-events",
-  "version": "0.0.11",
+  "name": "@rodrigogs/mysql-events",
+  "version": "0.1.0",
   "description": "A node.js package that watches a MySQL database and runs callbacks on matched events like updates on tables and/or specific columns.",
-  "homepage": "https://github.com/spencerlambert/mysql-events",
+  "homepage": "https://github.com/rodrigogs/mysql-events",
   "keywords": [
     "mysql",
     "events",
     "trigger",
     "notify",
     "watcher",
-    "callbacks"
-  ],
-  "author": {
-    "name": "Spencer Lambert <spence@wisptools.com> (http://wisptools.com)"
-  },
-  "contributors": [
-    {
-      "name": "sirhanshafahath <sirhan@wisptools.com>"
-    }
+    "promises"
   ],
   "repository": {
     "type": "git",
-    "url": "git@github.com:spencerlambert/mysql-events.git"
+    "url": "git@github.com:rodrigogs/mysql-events.git"
   },
-  "main": "index.js",
+  "main": "src/index.js",
   "dependencies": {
-    "underscore": "1.8.3",
-    "zongji": "0.4.3"
+    "debuggler": "^1.0.0",
+    "mysql": "^2.15.0",
+    "zongji": "0.4.5"
+  },
+  "devDependencies": {
+    "chai": "^4.1.2",
+    "codeclimate-test-reporter": "^0.5.0",
+    "dotenv-cli": "^1.4.0",
+    "eslint": "^5.0.0",
+    "eslint-config-airbnb-base": "^13.0.0",
+    "eslint-plugin-import": "^2.13.0",
+    "mocha": "^5.2.0",
+    "nyc": "^12.0.2"
   },
   "scripts": {
-    "test": ""
+    "text": "cross-env NODE_ENV=test mocha --exit \"src/**/*.spec.unit.js\"",
+    "eslint": "eslint . --ext .js",
+    "test": "mocha"
   },
   "license": "MIT",
   "files": [
