@@ -3,11 +3,10 @@ const ZongJi = require('zongji');
 const mysql = require('mysql');
 const Connection = require('mysql/lib/Connection');
 const EventEmitter = require('events');
+const eventHandler = require('./eventHandler');
 
-const EVENTS = {
-  CONNECTION_ERROR: 'connectionError',
-  ZONGJI_ERROR: 'zongjiError',
-};
+const EVENTS = require('./EVENTS.enum');
+const STATEMENTS = require('./STATEMENTS.enum');
 
 class MySQLEvents extends EventEmitter {
   /**
@@ -22,25 +21,47 @@ class MySQLEvents extends EventEmitter {
 
     this.zongJi = null;
     this.connected = false;
-    this.triggers = [];
+    this.triggers = {};
   }
 
   /**
    * @return {{CONNECTION_ERROR: string, ZONGJI_ERROR: string}}
-   * @constructor
    */
   static get EVENTS() {
     return EVENTS;
   }
 
-  _handleZongJiEvents() {
-    this.zongJi.on('error', err => this.emit(EVENTS.ZONGJI_ERROR, err));
-
-    this.zongJi.on('binlog', (event) => {
-      console.log(event); // SHIT! https://github.com/nevill/zongji/pull/21
-    });
+  /**
+   * @return {{ALL: string, INSERT: string, UPDATE: string, DELETE: string}}
+   */
+  static get STATEMENTS() {
+    return STATEMENTS;
   }
 
+  /**
+   * @param {Object} event binlog event object.
+   * @private
+   */
+  _handleEvent(event) {
+    const handler = eventHandler(event);
+    const triggers = handler.findTriggers(this.triggers);
+    const validTriggers = triggers.filter(handler.validateTrigger);
+
+    Promise.all(validTriggers.map(handler.executeTrigger))
+      .then(() => debug('triggers executed'));
+  }
+
+  /**
+   * @private
+   */
+  _handleZongJiEvents() {
+    this.zongJi.on('error', err => this.emit(EVENTS.ZONGJI_ERROR, err));
+    this.zongJi.on('binlog', event => this._handleEvent(event));
+  }
+
+  /**
+   * @private
+   */
   _handleConnectionEvents() {
     this.connection.on('error', err => this.emit(EVENTS.CONNECTION_ERROR, err));
   }
@@ -78,7 +99,7 @@ class MySQLEvents extends EventEmitter {
     this.emit('connected');
     this._handleConnectionEvents();
     this._handleZongJiEvents();
-    this.zongJi.start();
+    this.zongJi.start(this.options);
     this.connected = true;
   }
 
@@ -103,11 +124,64 @@ class MySQLEvents extends EventEmitter {
     this.connected = false;
   }
 
-  on(expression, statements) {
+  /**
+   * @param {String} expression
+   * @param {String} [statement = 'ALL']
+   * @param {String} name
+   * @param {Function} [validator]
+   * @param {Function} [callback]
+   * @return {void}
+   */
+  addTrigger({
+    expression,
+    statement = STATEMENTS.ALL,
+    name,
+    validator,
+    callback,
+  }) {
+    if (!name) throw new Error('Missing trigger name');
+    if (!expression) throw new Error('Missing trigger expression');
+
+    const trigger = this.triggers[expression] || {};
+    trigger.statements = trigger.statements || {};
+    trigger.statements[statement] = trigger.statements[statement] || [];
+
+    const statmnt = trigger.statements[statement];
+    if (statmnt.find(st => st.name === name)) {
+      throw new Error(`There's already a trigger named "${name}" for expression "${expression}" with statement "${statement}"`);
+    }
+
+    statmnt.push({
+      name,
+      validator,
+      callback,
+    });
+
+    this.triggers[expression] = trigger;
   }
 
-  off() {
+  /**
+   * @param {String} expression
+   * @param {String} [statement = 'ALL']
+   * @param {String} name
+   * @return {void}
+   */
+  removeTrigger({
+    expression,
+    statement = STATEMENTS.ALL,
+    name,
+  }) {
+    const trigger = this.triggers[expression];
+    if (!trigger) return;
 
+    const statmnt = trigger.statements[statement];
+    if (!statmnt) return;
+
+    const named = statmnt.find(st => st.name === name);
+    if (!named) return;
+
+    const index = statmnt.indexOf(named);
+    statmnt.splice(index, 1);
   }
 }
 

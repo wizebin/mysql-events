@@ -1,6 +1,7 @@
 {
   "name": "@rodrigogs/mysql-events",
-  "version": "0.1.0",
+  "version": "0.1.0-APLHA",
+  "license": "BSD-3-Clause",
   "description": "A node.js package that watches a MySQL database and runs callbacks on matched events like updates on tables and/or specific columns.",
   "homepage": "https://github.com/rodrigogs/mysql-events",
   "keywords": [
@@ -8,14 +9,18 @@
     "events",
     "trigger",
     "notify",
-    "watcher",
-    "promises"
+    "watcher"
   ],
   "repository": {
     "type": "git",
     "url": "git@github.com:rodrigogs/mysql-events.git"
   },
   "main": "src/index.js",
+  "scripts": {
+    "text": "cross-env NODE_ENV=test mocha --exit \"src/**/*.spec.unit.js\"",
+    "eslint": "eslint . --ext .js",
+    "test": "mocha"
+  },
   "dependencies": {
     "debuggler": "^1.0.0",
     "mysql": "^2.15.0",
@@ -31,15 +36,7 @@
     "mocha": "^5.2.0",
     "nyc": "^12.0.2"
   },
-  "scripts": {
-    "text": "cross-env NODE_ENV=test mocha --exit \"src/**/*.spec.unit.js\"",
-    "eslint": "eslint . --ext .js",
-    "test": "mocha"
-  },
-  "license": "MIT",
-  "files": [
-    "index.js",
-    "LICENSE",
-    "README.md"
-  ]
+  "engines": {
+    "node": ">=7.6.0 < 9"
+  }
 }

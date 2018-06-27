@@ -3,129 +3,91 @@ A Node JS NPM package that watches a MySQL database and runs callbacks on matche
 
 This package is based on the [ZongJi](https://github.com/nevill/zongji) node module. Please make sure that you meet the requirements described at [ZongJi](https://github.com/nevill/zongji), like MySQL binlog etc.
 
+This lib is strongly based on [https://github.com/spencerlambert/mysql-events](https://github.com/spencerlambert/mysql-events)
+
 # Quick Start
 ```javascript
-var MySQLEvents = require('mysql-events');
-var dsn = {
-  host:     _dbhostname_,
-  user:     _dbusername_,
-  password: _dbpassword_,
-};
-var mysqlEventWatcher = MySQLEvents(dsn);
-var watcher =mysqlEventWatcher.add(
-  'myDB.table.field.value',
-  function (oldRow, newRow, event) {
-     //row inserted
-    if (oldRow === null) {
-      //insert code goes here
-    }
+// Inside an async function
 
-     //row deleted
-    if (newRow === null) {
-      //delete code goes here
-    }
+const instance = new MySQLEvents({
+  host: 'localhost',
+  user: 'root',
+  password: 'root',
+}, {
+  startAtEnd: true,
+  includeSchema: {
+    MY_SCHEMA: [
+      'MY_TABLE',
+    ],
+  },
+});
 
-     //row updated
-    if (oldRow !== null && newRow !== null) {
-      //update code goes here
-    }
+await instance.start();
 
-    //detailed event information
-    //console.log(event)
-  }, 
-  'match this string or regex'
-);
+instance.addTrigger({
+  expression: 'COCAMAR.ACESSO_SISTEMA',
+  statement: MySQLEvents.STATEMENTS.ALL,
+  name: 'ACESSO_SISTEMA_TESTE',
+  validator: event => !!event,
+  callback: (event) => {
+    console.log(event);
+  },
+});
+
+instance.on(MySQLEvents.EVENTS.CONNECTION_ERROR, console.error);
+instance.on(MySQLEvents.EVENTS.ZONGJI_ERROR, console.error);
 ```
 
-# Installation
+# Install
 ```sh
-npm install mysql-events
+npm install @rodrigogs/mysql-events
 ```
 
 # Usage
-- Import the module into your application
-```javascript
-var MySQLEvents = require('mysql-events');
-```
-
 - Instantiate and create a database connection
-```sh
-var dsn = {
-  host:     'localhost',
-  user:     'username',
-  password: 'password'
+```javascript
+const dsn = {
+  host: 'localhost',
+  user: 'username',
+  password: 'password',
 };
-var myCon = MySQLEvents(dsn);
+
+const myInstance = new MySQLEvents(dsn);
 ```
 
 Make sure the database user has the privilege to read the binlog on database that you want to watch on.
 
-- Use the returned object to add new watchers
-```sh
-var event1 = myCon.add(
-  'dbName.tableName.fieldName.value',
-  function (oldRow, newRow, event) {
-    //code goes here
-  }, 
-  'Active'
-);
-```
-
 This will listen to any change in the _fieldName_ and if the changed value is equal to __Active__, then triggers the callback. Passing it 2 arguments. Argument value depends on the event.
 
-- Insert: oldRow = null, newRow = rowObject
-- Update: oldRow = rowObject, newRow = rowObject
-- Delete: oldRow = rowObject, newRow = null
+- Insert: before = null, after = rowObject
+- Update: before = rowObject, after = rowObject
+- Delete: before = rowObject, after = null
 
 ### `rowObject`
 It has the following structure:
 
 ```
 {
-  database: dbName,
-  table: tableName,
-  affectedColumns: {
-    [{
-      name:     fieldName1,
-      charset:  String,
-      type:     Number
-      metedata: String
-    },{
-      name:     fieldName2,
-      charset:  String,
-      type:     Number
-      metedata: String
-    }]
-},{
-  changedColumns: [fieldName1, fieldName2],
-  fields: {
-   fieldName1: recordValue1,
-   fieldName2: recordValue2,
-     ....
-     ....
-     ....
-   fieldNameN: recordValueN
-  }
+  before: {...columns},
+  after: {...columns},
 }
 ```
 
-## Remove an event
-```
-event1.remove();
+## Remove a trigger
+```javascript
+instance.removeTrigger({
+  expression: 'schema.table',
+  statement: 'INSERT',
+  name: 'trigger_name',
+});
 ```
 
 ## Stop all events on the connection
-```
-myCon.stop();
+```javascript
+await instance.stop();
 ```
 
 ## Additional options
-In order to customize the connection options, you can provide your own settings passing a second argument object to the connection function.
-```
-var mysqlEventWatcher = MySQLEvents(dsn, {
-  startAtEnd: false // it overrides default value "true"
-});
-```
 You can find the list of the available options [here](https://github.com/nevill/zongji#zongji-class).
 
 # Watcher Setup
@@ -134,8 +96,6 @@ Its basically a dot '.' seperated string. It can have the following combinations
 - _database_: watches the whole database for changes (insert/update/delete). Which table and row are affected can be inspected from the oldRow & newRow
 - _database.table_: watches the whole table for changes. Which rows are affected can be inspected from the oldRow & newRow
 - _database.table.column_: watches for changes in the column. Which database, table & other changed columns can be inspected from the oldRow & newRow
-- _database.table.column.value_: watches for changes in the column and only trigger the callback if the changed value is equal to the 3rd argument passed to the add().
-- _database.table.column.regexp_: watches for changes in the column and only trigger the callback if the changed value passes a regular expression test to the 3rd argument passed to the add(). The 3rd argument must be a Javascript Regular Expression Object, like, if you want to match for a starting sting (eg: MySQL) in the value, use /MySQL/i. This will trigger the callback only if the new value starts with MySQL
 
-# LICENSE
-MIT
+### LICENSE
+[BSD-3-Clause](https://github.com/rodrigogs/mysql-events/blob/master/LICENSE) © Rodrigo Gomes da Silva
