@@ -9,6 +9,8 @@ This lib is strongly based on [https://github.com/spencerlambert/mysql-events](h
 ```javascript
 // Inside an async function
 
+const MySQLEvents = require('@rodrigogs/mysql-events');
+
 const instance = new MySQLEvents({
   host: 'localhost',
   user: 'root',
