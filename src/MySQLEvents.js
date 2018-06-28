@@ -84,6 +84,7 @@ class MySQLEvents extends EventEmitter {
 
     if ((this.connection instanceof Connection) && (this.connection.state !== 'connected')) {
       debug('initializing connection');
+
       await new Promise((resolve, reject) => {
         this.connection.connect((err) => {
           if (err) return reject(err);

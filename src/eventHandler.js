@@ -1,32 +1,6 @@
 const utils = require('./utils');
 const STATEMENTS = require('./STATEMENTS.enum');
 
-const normalize = (event) => {
-  const normalizeRow = (row) => {
-    if (!row) return undefined;
-
-    const columns = Object.getOwnPropertyNames(row);
-    for (let i = 0, len = columns.length; i < len; i += 1) {
-      const columnValue = row[columns[i]];
-
-      if (columnValue instanceof Buffer && columnValue.length === 1) { // It's a boolean
-        row[columns[i]] = (columnValue[0] > 0);
-      }
-    }
-
-    return row;
-  };
-
-  if (event.rows) {
-    event.rows = event.rows.map(row => ({
-      after: normalizeRow(row.after),
-      before: normalizeRow(row.before),
-    }));
-  }
-
-  return event;
-};
-
 const getEventType = (eventName) => {
   return {
     writerows: STATEMENTS.INSERT,
@@ -35,12 +9,86 @@ const getEventType = (eventName) => {
   }[eventName];
 };
 
+const normalizeRow = (row) => {
+  if (!row) return undefined;
+
+  const columns = Object.getOwnPropertyNames(row);
+  for (let i = 0, len = columns.length; i < len; i += 1) {
+    const columnValue = row[columns[i]];
+
+    if (columnValue instanceof Buffer && columnValue.length === 1) { // It's a boolean
+      row[columns[i]] = (columnValue[0] > 0);
+    }
+  }
+
+  return row;
+};
+
+const hasDifference = (beforeValue, afterValue) => {
+  if ((beforeValue && afterValue) && beforeValue instanceof Date) {
+    return beforeValue.getTime() !== afterValue.getTime();
+  }
+
+  return beforeValue !== afterValue;
+};
+
+const normalizeEvent = (event) => {
+  if (!event.rows) return event;
+
+  const eventType = getEventType(event.getEventName());
+
+  const normalized = {
+    eventType,
+    affectedRows: [],
+    affectedColumns: [],
+    tableId: event.tableId,
+    tableMap: event.tableMap,
+  };
+
+  event.rows.forEach((row) => {
+    if (eventType === STATEMENTS.INSERT) {
+      row = {
+        before: undefined,
+        after: row,
+      };
+    }
+    if (eventType === STATEMENTS.DELETE) {
+      row = {
+        before: row,
+        after: undefined,
+      };
+    }
+
+    const normalizedRows = {
+      after: normalizeRow(row.after),
+      before: normalizeRow(row.before),
+    };
+
+    normalized.affectedRows.push(normalizedRows);
+
+    const columns = Object.getOwnPropertyNames((normalizedRows.after || normalizedRows.before));
+    for (let i = 0, len = columns.length; i < len; i += 1) {
+      const columnName = columns[i];
+      const beforeValue = (normalizedRows.before || {})[columnName];
+      const afterValue = (normalizedRows.after || {})[columnName];
+
+      if (hasDifference(beforeValue, afterValue)) {
+        if (normalized.affectedColumns.indexOf(columnName) === -1) {
+          normalized.affectedColumns.push(columnName);
+        }
+      }
+    }
+  });
+
+  return normalized;
+};
+
 /**
  * @param {Object} event
  * @return {{findTriggers: findTriggers, validateTrigger: validateTrigger, executeTrigger: executeTrigger}}
  */
 const eventHandler = (event) => {
-  event = normalize(event);
+  event = normalizeEvent(event);
 
   return {
     /**
@@ -49,7 +97,7 @@ const eventHandler = (event) => {
      */
     findTriggers: (triggers) => {
       const triggerExpressions = Object.getOwnPropertyNames(triggers);
-      const eventType = getEventType(event.getEventName());
+      const { eventType } = event;
 
       if (!eventType) return [];
 
@@ -72,7 +120,7 @@ const eventHandler = (event) => {
           return false;
         })
         .map((trigger) => {
-          const eventType = getEventType(event.getEventName());
+          const { eventType } = event;
           const statements = [];
           if (trigger.statements[STATEMENTS.ALL]) {
             statements.push(trigger.statements[STATEMENTS.ALL]);
