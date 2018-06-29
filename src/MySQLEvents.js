@@ -21,6 +21,7 @@ class MySQLEvents extends EventEmitter {
 
     this.zongJi = null;
     this.connected = false;
+    this.started = false;
     this.triggers = {};
   }
 
@@ -45,9 +46,8 @@ class MySQLEvents extends EventEmitter {
   _handleEvent(event) {
     const handler = eventHandler(event);
     const triggers = handler.findTriggers(this.triggers);
-    const validTriggers = triggers.filter(handler.validateTrigger);
 
-    Promise.all(validTriggers.map(handler.executeTrigger))
+    Promise.all(triggers.map(handler.executeTrigger))
       .then(() => debug('triggers executed'));
   }
 
@@ -70,6 +70,8 @@ class MySQLEvents extends EventEmitter {
    * @return {Promise<void>}
    */
   async start() {
+    if (this.started) return;
+
     debug('connecting to mysql');
 
     if (typeof this.connection === 'string') {
@@ -102,12 +104,15 @@ class MySQLEvents extends EventEmitter {
     this._handleZongJiEvents();
     this.zongJi.start(this.options);
     this.connected = true;
+    this.started = true;
   }
 
   /**
    * @return {Promise<void>}
    */
   async stop() {
+    if (!this.started) return;
+
     debug('disconnecting from mysql');
 
     await new Promise((resolve, reject) => {
@@ -123,13 +128,13 @@ class MySQLEvents extends EventEmitter {
     debug('disconnected');
     this.emit('disconnected');
     this.connected = false;
+    this.started = false;
   }
 
   /**
    * @param {String} expression
    * @param {String} [statement = 'ALL']
    * @param {String} name
-   * @param {Function} [validator]
    * @param {Function} [callback]
    * @return {void}
    */
@@ -137,7 +142,6 @@ class MySQLEvents extends EventEmitter {
     expression,
     statement = STATEMENTS.ALL,
     name,
-    validator,
     callback,
   }) {
     if (!name) throw new Error('Missing trigger name');
@@ -154,7 +158,6 @@ class MySQLEvents extends EventEmitter {
 
     statmnt.push({
       name,
-      validator,
       callback,
     });
 

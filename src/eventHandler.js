@@ -121,24 +121,12 @@ const eventHandler = (event) => {
         if (parts.schema !== '*' && parts.schema !== event.schema) return false;
         if (!(!parts.table || parts.table === '*') && parts.table !== event.table) return false;
         if (!(!parts.column || parts.column === '*') && event.affectedColumns.indexOf(parts.column) === -1) return false;
-        if (!(!parts.value || parts.value === '*') && event.affectedRows
-          .find(row => String(row[event.column]) === parts.value)) return false;
 
         if (trigger.statements[STATEMENTS.ALL]) statements.push(...trigger.statements[STATEMENTS.ALL]);
         if (trigger.statements[event.type]) statements.push(...trigger.statements[event.type]);
       }
 
       return statements;
-    },
-
-    /**
-     * @param {Object} trigger
-     * @return {Boolean}
-     */
-    validateTrigger: (trigger) => {
-      if (!trigger.validator) return true;
-
-      return !!trigger.validator(event);
     },
 
     /**

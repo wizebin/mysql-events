@@ -22,15 +22,17 @@ const instance = new MySQLEvents({
       'MY_TABLE',
     ],
   },
+  excludeSchema: {
+    mysql: true,
+  },
 });
 
 await instance.start();
 
 instance.addTrigger({
-  expression: 'COCAMAR.ACESSO_SISTEMA',
+  expression: 'SCHEMA.TABLE.column',
   statement: MySQLEvents.STATEMENTS.ALL,
-  name: 'ACESSO_SISTEMA_TESTE',
-  validator: event => !!event,
+  name: 'TEST',
   callback: (event) => {
     console.log(event);
   },
@@ -46,7 +48,7 @@ npm install @rodrigogs/mysql-events
 ```
 
 # Usage
-- Instantiate and create a database connection
+- Instantiate and create a database connection using a DSN
 ```javascript
 const dsn = {
   host: 'localhost',
@@ -54,7 +56,18 @@ const dsn = {
   password: 'password',
 };
 
-const myInstance = new MySQLEvents(dsn);
+const myInstance = new MySQLEvents(dsn, { /* zongji options */ });
+```
+
+- Instantiate and create a database connection using a preexisting connection
+```javascript
+const connection = mysql.createConnection({
+  host: 'localhost',
+  user: 'username',
+  password: 'password',
+});
+
+const myInstance = new MySQLEvents(connection, { /* zongji options */ });
 ```
 
 Make sure the database user has the privilege to read the binlog on database that you want to watch on.
@@ -93,11 +106,14 @@ await instance.stop();
 You can find the list of the available options [here](https://github.com/nevill/zongji#zongji-class).
 
 # Watcher Setup
-Its basically a dot '.' seperated string. It can have the following combinations
+Its basically a dot '.' seperated string. It can have the following combinations.
 
-- _database_: watches the whole database for changes (insert/update/delete). Which table and row are affected can be inspected from the oldRow & newRow
-- _database.table_: watches the whole table for changes. Which rows are affected can be inspected from the oldRow & newRow
-- _database.table.column_: watches for changes in the column. Which database, table & other changed columns can be inspected from the oldRow & newRow
+- *schema*: watches the whole database for changes (insert/update/delete). Which table and row are affected can be inspected from the oldRow & newRow
+  - If '*', it will watch changes for any database schema.
+- *schema.table*: watches the whole table for changes. Which rows are affected can be inspected from the oldRow & newRow
+  - If '*' or '', will watch for any change in schema(s) tables.
+- *schema.table.column*: watches for changes in the column. Which database, table & other changed columns can be inspected from the oldRow & newRow
+  - If '*' or '', will watch for any change in schema(s) tables(s) columns.
 
 ### LICENSE
 [BSD-3-Clause](https://github.com/rodrigogs/mysql-events/blob/master/LICENSE) © Rodrigo Gomes da Silva
