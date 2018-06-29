@@ -1,4 +1,3 @@
-const utils = require('./utils');
 const STATEMENTS = require('./STATEMENTS.enum');
 
 const getEventType = (eventName) => {
