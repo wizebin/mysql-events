@@ -9,6 +9,16 @@ const getEventType = (eventName) => {
   }[eventName];
 };
 
+const parseExpression = (expression = '') => {
+  const parts = expression.split('.');
+  return {
+    schema: parts[0],
+    table: parts[1],
+    column: parts[2],
+    value: parts[3],
+  };
+};
+
 const normalizeRow = (row) => {
   if (!row) return undefined;
 
@@ -35,24 +45,26 @@ const hasDifference = (beforeValue, afterValue) => {
 const normalizeEvent = (event) => {
   if (!event.rows) return event;
 
-  const eventType = getEventType(event.getEventName());
+  const type = getEventType(event.getEventName());
+  const schema = event.tableMap[event.tableId].parentSchema;
+  const table = event.tableMap[event.tableId].tableName;
 
   const normalized = {
-    eventType,
+    type,
+    schema,
+    table,
     affectedRows: [],
     affectedColumns: [],
-    tableId: event.tableId,
-    tableMap: event.tableMap,
   };
 
   event.rows.forEach((row) => {
-    if (eventType === STATEMENTS.INSERT) {
+    if (type === STATEMENTS.INSERT) {
       row = {
         before: undefined,
         after: row,
       };
     }
-    if (eventType === STATEMENTS.DELETE) {
+    if (type === STATEMENTS.DELETE) {
       row = {
         before: row,
         after: undefined,
@@ -96,44 +108,27 @@ const eventHandler = (event) => {
      * @return {Object[]}
      */
     findTriggers: (triggers) => {
+      if (!event.type) return [];
+
       const triggerExpressions = Object.getOwnPropertyNames(triggers);
-      const { eventType } = event;
+      const statements = [];
 
-      if (!eventType) return [];
+      for (let i = 0, len = triggerExpressions.length; i < len; i += 1) {
+        const expression = triggerExpressions[i];
+        const trigger = triggers[expression];
 
-      const triggerStatements = triggerExpressions
-        .map((te) => {
-          const trigger = triggers[te];
-          trigger.expression = te;
-          return trigger;
-        })
-        .filter((trigger) => {
-          const eventSchema = event.tableMap[event.tableId].parentSchema;
-          const eventTable = event.tableMap[event.tableId].tableName;
+        const parts = parseExpression(expression);
+        if (parts.schema !== '*' && parts.schema !== event.schema) return false;
+        if (!(!parts.table || parts.table === '*') && parts.table !== event.table) return false;
+        if (!(!parts.column || parts.column === '*') && event.affectedColumns.indexOf(parts.column) === -1) return false;
+        if (!(!parts.value || parts.value === '*') && event.affectedRows
+          .find(row => String(row[event.column]) === parts.value)) return false;
 
-          if (trigger.expression.indexOf(eventSchema) !== -1 || trigger.expression.indexOf(eventTable) !== -1) {
-            if (trigger.statements[STATEMENTS.ALL] || trigger.statements[eventType]) {
-              return true;
-            }
-          }
+        if (trigger.statements[STATEMENTS.ALL]) statements.push(...trigger.statements[STATEMENTS.ALL]);
+        if (trigger.statements[event.type]) statements.push(...trigger.statements[event.type]);
+      }
 
-          return false;
-        })
-        .map((trigger) => {
-          const { eventType } = event;
-          const statements = [];
-          if (trigger.statements[STATEMENTS.ALL]) {
-            statements.push(trigger.statements[STATEMENTS.ALL]);
-          }
-
-          if (trigger.statements[eventType]) {
-            statements.push(trigger.statements[eventType]);
-          }
-
-          return statements;
-        });
-
-      return utils.flatten(triggerStatements);
+      return statements;
     },
 
     /**
