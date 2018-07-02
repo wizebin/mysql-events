@@ -42,4 +42,4 @@ jobs:
           command: |
             npm run coverage
             ./cc-test-reporter format-coverage -t lcov -o coverage.json coverage/lcov.info
-            ./cc-test-reporter upload-coverage -r CircleCI -i coverage.json
+            ./cc-test-reporter upload-coverage -i coverage.json
