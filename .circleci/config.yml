@@ -45,4 +45,4 @@ jobs:
 
       - run:
             name: Updating coverage status
-            command: ./cc-test-reporter after-build --coverage-input-type coverage/lcov.info --exit-code $?
+            command: ./cc-test-reporter after-build --coverage-input-type lcov -o coverage/lcov.info --exit-code $?
