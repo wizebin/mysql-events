@@ -1,9 +1,11 @@
 # mysql-events
-A Node JS NPM package that watches a MySQL database and runs callbacks on matched events.
+![CircleCI](https://circleci.com/gh/rodrigogs/mysql-events.svg)
+[![Code Climate](https://codeclimate.com/github/rodrigogs/mysql-events/badges/gpa.svg)](https://codeclimate.com/github/rodrigogs/mysql-events)
+[![Test Coverage](https://codeclimate.com/github/rodrigogs/mysql-events/badges/coverage.svg)](https://codeclimate.com/github/rodrigogs/mysql-events/coverage)
+
+A [node.js](https://nodejs.org) package that watches a MySQL database and runs callbacks on matched events.
 
 This package is based on the [ZongJi](https://github.com/nevill/zongji) node module. Please make sure that you meet the requirements described at [ZongJi](https://github.com/nevill/zongji), like MySQL binlog etc.
-
-This lib is strongly based on [https://github.com/spencerlambert/mysql-events](https://github.com/spencerlambert/mysql-events)
 
 # Quick Start
 ```javascript

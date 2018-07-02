@@ -32,5 +32,5 @@ jobs:
           key: lib-dependencies-{{ checksum "package.json" }}
 
       - run:
-          name: Run tests
-          command: npm test
+          name: Run tests/coverage
+          command: npm run coverage

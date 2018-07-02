@@ -15,11 +15,11 @@
     "type": "git",
     "url": "git@github.com:rodrigogs/mysql-events.git"
   },
-  "main": "src/index.js",
+  "main": "index.js",
   "scripts": {
-    "text": "cross-env NODE_ENV=test mocha --exit \"src/**/*.spec.unit.js\"",
     "eslint": "eslint . --ext .js",
-    "test": "mocha"
+    "test": "mocha --exit",
+    "coverage": "nyc --reporter=lcov npm test"
   },
   "dependencies": {
     "debug": "^3.1.0",
