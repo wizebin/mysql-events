@@ -39,10 +39,8 @@ jobs:
 
       - run:
           name: Run tests/coverage
-          command: |
-            ./cc-test-reporter before-build
-            npm run coverage
+          command: npm run coverage
 
       - run:
             name: Updating coverage status
-            command: ./cc-test-reporter after-build --coverage-input-type lcov -o coverage/lcov.info --exit-code $?
+            command: ./cc-test-reporter upload-coverage -i coverage/lcov.info
