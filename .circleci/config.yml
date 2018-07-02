@@ -43,4 +43,4 @@ jobs:
 
       - run:
             name: Updating coverage status
-            command: ./cc-test-reporter upload-coverage -i coverage/lcov.info
+            command: ./cc-test-reporter upload-coverage -i coverage/lcov.info -r CircleCI
