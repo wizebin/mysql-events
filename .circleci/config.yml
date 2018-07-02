@@ -1,0 +1,36 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/node:8.11.3
+      - image: circleci/mysql:5.5
+        environment:
+          MYSQL_ROOT_PASSWORD: 'root'
+          MYSQL_DATABASE: mysql-events
+
+    working_directory: ~/mysql-events
+
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+            - lib-dependencies-{{ checksum "package.json" }}
+            - lib-dependencies-
+
+      - run:
+          name: Install dependencies
+          command: npm install
+
+      - run:
+          name: Wait for DB
+          command: dockerize -wait tcp://127.0.0.1:3306 -timeout 120s
+
+      - save_cache:
+          paths:
+            - node_modules
+          key: lib-dependencies-{{ checksum "package.json" }}
+
+      - run:
+          name: Run tests
+          command: npm test
