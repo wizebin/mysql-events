@@ -20,7 +20,7 @@ jobs:
 
       - run:
           name: Install dependencies
-          command: npm install
+          command: npm install codeclimate-test-reporter -g && npm install
 
       - run:
           name: Wait for DB
@@ -34,3 +34,7 @@ jobs:
       - run:
           name: Run tests/coverage
           command: npm run coverage
+
+      - run:
+            name: Updating coverage status
+            command: codeclimate-test-reporter < coverage/lcov.info
