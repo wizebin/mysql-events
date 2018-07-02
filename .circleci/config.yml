@@ -39,8 +39,7 @@ jobs:
 
       - run:
           name: Run tests/coverage
-          command: npm run coverage
-
-      - run:
-            name: Updating coverage status
-            command: ./cc-test-reporter upload-coverage -i coverage/lcov.info -r CircleCI
+          command: |
+            npm run coverage
+            ./cc-test-reporter format-coverage -t lcov -o coverage.json coverage/lcov.info
+            ./cc-test-reporter upload-coverage -i coverage.json
