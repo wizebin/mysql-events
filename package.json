@@ -1,6 +1,6 @@
 {
   "name": "@rodrigogs/mysql-events",
-  "version": "0.2.2-APLHA",
+  "version": "0.3.0-APLHA",
   "license": "BSD-3-Clause",
   "description": "A node.js package that watches a MySQL database and runs callbacks on matched events like updates on tables and/or specific columns.",
   "homepage": "https://github.com/rodrigogs/mysql-events",
@@ -22,10 +22,10 @@
     "coverage": "nyc --reporter=lcov npm test"
   },
   "dependencies": {
+    "@rodrigogs/zongji": "^0.4.8",
     "debug": "^3.1.0",
     "debuggler": "^1.0.0",
-    "mysql": "^2.15.0",
-    "zongji": "0.4.5"
+    "mysql": "^2.15.0"
   },
   "devDependencies": {
     "chai": "^4.1.2",
