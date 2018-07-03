@@ -98,7 +98,7 @@ program()
       .then(() => console.log('I\'m stopped!'))
       .catch(err => console.error('Something bad happened', err));
     ```
-  ### addTrigger({ name, expression, statement, callback })
+  ### #addTrigger({ name, expression, statement, callback })
   - Adds a trigger for the given expression/statement and calls the callback function when the event happens
     ```javascript
     instance.addTrigger({
@@ -180,7 +180,7 @@ program()
       ...
     });
     ```
-  ### removeTrigger({ name, expression, statement })
+  ### #removeTrigger({ name, expression, statement })
   - Removes a trigger from the current instance
     ```javascript
     instance.removeTrigger({
