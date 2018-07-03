@@ -1,0 +1,12 @@
+/.idea/
+/.circleci/
+/example/
+/examples/
+.codeclimate.yml
+.editorconfig
+.eslintignore
+.eslintrc.yml
+.gitattributes
+.gitignore
+example.js
+*.iml
