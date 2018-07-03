@@ -15,7 +15,7 @@ npm install @rodrigogs/mysql-events
 ## Quick Start
 ```javascript
 const mysql = require('mysql');
-const MySQLEvents = require('.');
+const MySQLEvents = require('@rodrigogs/mysql-events');
 
 const program = async () => {
   const connection = mysql.createConnection({
