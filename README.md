@@ -19,9 +19,9 @@ const MySQLEvents = require('.');
 
 const program = async () => {
   const connection = mysql.createConnection({
-    host: '10.3.250.49',
+    host: 'localhost',
     user: 'root',
-    password: '021zaq#@!inq',
+    password: 'root',
   });
 
   const instance = new MySQLEvents(connection, {
