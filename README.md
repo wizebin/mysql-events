@@ -224,6 +224,7 @@ It has the following structure:
     'column3',
   ],
   timestamp: 1530645380029,
+  nextPosition: 1343,
 }
 ```
 
