@@ -5,117 +5,229 @@
 
 A [node.js](https://nodejs.org) package that watches a MySQL database and runs callbacks on matched events.
 
-This package is based on the [ZongJi](https://github.com/nevill/zongji) node module. Please make sure that you meet the requirements described at [ZongJi](https://github.com/nevill/zongji), like MySQL binlog etc.
+This package is based on the [original ZongJi](https://github.com/nevill/zongji) and the [original mysql-events](https://github.com/spencerlambert/mysql-events) modules. Please make sure that you meet the requirements described at [ZongJi](https://github.com/rodrigogs/zongji#installation), like MySQL binlog etc.
 
-# Quick Start
-```javascript
-// Inside an async function
-
-const MySQLEvents = require('@rodrigogs/mysql-events');
-
-const instance = new MySQLEvents({
-  host: 'localhost',
-  user: 'root',
-  password: 'root',
-}, {
-  startAtEnd: true,
-  includeSchema: {
-    MY_SCHEMA: [
-      'MY_TABLE',
-    ],
-  },
-  excludeSchema: {
-    mysql: true,
-  },
-});
-
-await instance.start();
-
-instance.addTrigger({
-  expression: 'SCHEMA.TABLE.column',
-  statement: MySQLEvents.STATEMENTS.ALL,
-  name: 'TEST',
-  callback: (event) => {
-    console.log(event);
-  },
-});
-
-instance.on(MySQLEvents.EVENTS.CONNECTION_ERROR, console.error);
-instance.on(MySQLEvents.EVENTS.ZONGJI_ERROR, console.error);
-```
-
-# Install
+## Install
 ```sh
 npm install @rodrigogs/mysql-events
 ```
 
-# Usage
-- Instantiate and create a database connection using a DSN
+## Quick Start
 ```javascript
-const dsn = {
-  host: 'localhost',
-  user: 'username',
-  password: 'password',
+const mysql = require('mysql');
+const MySQLEvents = require('.');
+
+const program = async () => {
+  const connection = mysql.createConnection({
+    host: '10.3.250.49',
+    user: 'root',
+    password: '021zaq#@!inq',
+  });
+
+  const instance = new MySQLEvents(connection, {
+    startAtEnd: true,
+    excludedSchemas: {
+      mysql: true,
+    },
+  });
+
+  await instance.start();
+
+  instance.addTrigger({
+    name: 'TEST',
+    expression: '*',
+    statement: MySQLEvents.STATEMENTS.ALL,
+    callback: (event) => { // You will receive the events here
+      console.log(event);
+    },
+  });
+  
+  instance.on(MySQLEvents.EVENTS.CONNECTION_ERROR, console.error);
+  instance.on(MySQLEvents.EVENTS.ZONGJI_ERROR, console.error);
 };
 
-const myInstance = new MySQLEvents(dsn, { /* zongji options */ });
+program()
+  .then(() => console.log('Waiting for database vents...'))
+  .catch(console.error);
 ```
+[Check the examples](https://github.com/rodrigogs/mysql-events/examples)
 
-- Instantiate and create a database connection using a preexisting connection
-```javascript
-const connection = mysql.createConnection({
-  host: 'localhost',
-  user: 'username',
-  password: 'password',
-});
+## Usage
+  ### #constructor(connection, options)
+  - Instantiate and create a database connection using a DSN
+    ```javascript
+    const dsn = {
+      host: 'localhost',
+      user: 'username',
+      password: 'password',
+    };
 
-const myInstance = new MySQLEvents(connection, { /* zongji options */ });
-```
+    const myInstance = new MySQLEvents(dsn, { /* ZongJi options */ });
+    ```
 
-Make sure the database user has the privilege to read the binlog on database that you want to watch on.
+  - Instantiate and create a database connection using a preexisting connection
+    ```javascript
+    const connection = mysql.createConnection({
+      host: 'localhost',
+      user: 'username',
+      password: 'password',
+    });
 
-This will listen to any change in the _fieldName_ and if the changed value is equal to __Active__, then triggers the callback. Passing it 2 arguments. Argument value depends on the event.
+    const myInstance = new MySQLEvents(connection, { /* ZongJi options */ });
+    ```
+  - Options(the second argument) is for ZongJi options
+    ```javascript
+    const myInstance = new MySQLEvents({ /* connection */ }, {
+      serverId: 3,
+      startAtEnd: true,
+    });
+    ```
+    [See more about ZongJi options](https://github.com/rodrigogs/zongji#zongji-class)
 
-- Insert: before = null, after = rowObject
-- Update: before = rowObject, after = rowObject
-- Delete: before = rowObject, after = null
+  ### #start()
+  - start function ensures that MySQL is connected and ZongJi is running before resolving its promise
+    ```javascript
+    myInstance.start()
+      .then(() => console.log('I\'m running!'))
+      .catch(err => console.error('Something bad happened', err));
+    ```
+  ### #stop()
+  - stop function terminates MySQL connection and stops ZongJi before resolving its promise
+    ```javascript
+    myInstance.stop()
+      .then(() => console.log('I\'m stopped!'))
+      .catch(err => console.error('Something bad happened', err));
+    ```
+  ### addTrigger({ name, expression, statement, callback })
+  - Adds a trigger for the given expression/statement and calls the callback function when the event happens
+    ```javascript
+    instance.addTrigger({
+      name: 'MY_TRIGGER',
+      expression: 'MY_SCHEMA.MY_TABLE.MY_COLUMN',
+      statement: MySQLEvents.STATEMENTS.INSERT,
+      callback: (event) => {
+        // Here you will get the events for the given expression/statement
+      },
+    });
+    ```
+  - The `name` argument must be unique for each expression/statement, it will be user later if you want to remove a trigger
+    ```javascript
+    instance.addTrigger({
+      name: 'MY_TRIGGER',
+      expression: 'MY_SCHEMA.*',
+      statement: MySQLEvents.STATEMENTS.ALL,
+      ...
+    });
 
-### `rowObject`
+    instance.removeTrigger({
+      name: 'MY_TRIGGER',
+      expression: 'MY_SCHEMA.*',
+      statement: MySQLEvents.STATEMENTS.ALL,
+    });
+    ```
+  - The `expression` argument is very dynamic, you can replace any step by `*` to make it wait for any schema, table or column events
+    ```javascript
+    instance.addTrigger({
+      name: 'Name updates from table USERS at SCHEMA2',
+      expression: 'SCHEMA2.USERS.name',
+      ...
+    });
+    ```
+    ```javascript
+    instance.addTrigger({
+      name: 'All database events',
+      expression: '*',
+      ...
+    });
+    ```
+    ```javascript
+    instance.addTrigger({
+      name: 'All events from SCHEMA2',
+      expression: 'SCHEMA2.*',
+      ...
+    });
+    ```
+    ```javascript
+    instance.addTrigger({
+      name: 'All database events for table USERS',
+      expression: '*.USERS',
+      ...
+    });
+    ```
+    ```javascript
+    instance.addTrigger({
+      name: 'All database events for table USERS',
+      expression: '*.USERS',
+      ...
+    });
+    ```
+  - The `statement` argument indicates in which database operation an event should be triggered
+    ```javascript
+    instance.addTrigger({
+      ...
+      statement: MySQLEvents.STATEMENTS.ALL,
+      ...
+    });
+    ```
+    [Allowed statements](https://github.com/rodrigogs/mysql-events/blob/master/lib/STATEMENTS.enum.js)
+  - The `callback` argument is a function where the trigger events should be threated
+    ```javascript
+    instance.addTrigger({
+      ...
+      callback: (event) => {
+        console.log(event); // { type, schema, table, affectedRows: [], affectedColumns: [], timestamp, }
+      },
+      ...
+    });
+    ```
+  ### removeTrigger({ name, expression, statement })
+  - Removes a trigger from the current instance
+    ```javascript
+    instance.removeTrigger({
+      name: 'My previous created trigger',
+      expression: '',
+      statement: MySQLEvents.STATEMENTS.INSERT,
+    });
+    ```
+  ### Instance events
+  - MySQLEvents class emits some events related to its MySQL connection and ZongJi instance
+    ```javascript
+    instance.on(MySQLEvents.EVENTS.CONNECTION_ERROR, (err) => console.log('Connection error', err));
+    instance.on(MySQLEvents.EVENTS.ZONGJI_ERROR, (err) => console.log('ZongJi error', err));
+    ```
+  [Available events](https://github.com/rodrigogs/mysql-events/blob/master/lib/STATEMENTS.enum.js)
+
+## Tigger event object
 It has the following structure:
-
-```
+```javascript
 {
-  before: {...columns},
-  after: {...columns},
+  type: 'INSERT | UPDATE | DELETE',
+  schema: 'SCHEMA_NAME',
+  table: 'TABLE_NAME',
+  affectedRows: [{
+    before: {
+      column1: 'A',
+      column2: 'B',
+      column3: 'C',
+      ...
+    },
+    after: {
+      column1: 'D',
+      column2: 'E',
+      column3: 'F',
+      ...
+    },
+  }],
+  affectedColumns: [
+    'column1',
+    'column2',
+    'column3',
+  ],
+  timestamp: 1530645380029,
 }
 ```
 
-## Remove a trigger
-```javascript
-instance.removeTrigger({
-  expression: 'schema.table',
-  statement: 'INSERT',
-  name: 'trigger_name',
-});
-```
+**Make sure the database user has the privilege to read the binlog on database that you want to watch on.**
 
-## Stop all events on the connection
-```javascript
-await instance.stop();
-```
-
-## Additional options
-You can find the list of the available options [here](https://github.com/nevill/zongji#zongji-class).
-
-# Watcher Setup
-Its basically a dot '.' seperated string. It can have the following combinations.
-
-- *schema*: watches the whole database for changes (insert/update/delete). Which table and row are affected can be inspected from the oldRow & newRow
-  - If '*', it will watch changes for any database schema.
-- *schema.table*: watches the whole table for changes. Which rows are affected can be inspected from the oldRow & newRow
-  - If '*' or '', will watch for any change in schema(s) tables.
-- *schema.table.column*: watches for changes in the column. Which database, table & other changed columns can be inspected from the oldRow & newRow
-  - If '*' or '', will watch for any change in schema(s) tables(s) columns.
-
-### LICENSE
+## LICENSE
 [BSD-3-Clause](https://github.com/rodrigogs/mysql-events/blob/master/LICENSE) © Rodrigo Gomes da Silva
