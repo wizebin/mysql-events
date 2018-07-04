@@ -197,7 +197,7 @@ program()
     ```
   [Available events](https://github.com/rodrigogs/mysql-events/blob/master/lib/STATEMENTS.enum.js)
 
-## Tigger event object
+## Trigger event object
 It has the following structure:
 ```javascript
 {
