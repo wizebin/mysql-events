@@ -117,6 +117,30 @@ after(async () => {
 
 describe('MySQLEvents', () => {
 
+  it('should expose EVENTS enum', async () => {
+    MySQLEvents.EVENTS.should.be.an('object');
+    MySQLEvents.EVENTS.should.have.ownPropertyDescriptor('BINLOG');
+    MySQLEvents.EVENTS.BINLOG.should.be.equal('binlog');
+    MySQLEvents.EVENTS.should.have.ownPropertyDescriptor('TRIGGER_ERROR');
+    MySQLEvents.EVENTS.TRIGGER_ERROR.should.be.equal('triggerError');
+    MySQLEvents.EVENTS.should.have.ownPropertyDescriptor('CONNECTION_ERROR');
+    MySQLEvents.EVENTS.CONNECTION_ERROR.should.be.equal('connectionError');
+    MySQLEvents.EVENTS.should.have.ownPropertyDescriptor('ZONGJI_ERROR');
+    MySQLEvents.EVENTS.ZONGJI_ERROR.should.be.equal('zongjiError');
+  });
+
+  it('should expose STATEMENTS enum', async () => {
+    MySQLEvents.STATEMENTS.should.be.an('object');
+    MySQLEvents.STATEMENTS.should.have.ownPropertyDescriptor('ALL');
+    MySQLEvents.STATEMENTS.ALL.should.be.equal('ALL');
+    MySQLEvents.STATEMENTS.should.have.ownPropertyDescriptor('INSERT');
+    MySQLEvents.STATEMENTS.INSERT.should.be.equal('INSERT');
+    MySQLEvents.STATEMENTS.should.have.ownPropertyDescriptor('UPDATE');
+    MySQLEvents.STATEMENTS.UPDATE.should.be.equal('UPDATE');
+    MySQLEvents.STATEMENTS.should.have.ownPropertyDescriptor('DELETE');
+    MySQLEvents.STATEMENTS.DELETE.should.be.equal('DELETE');
+  });
+
   it('should connect and disconnect from MySQL using a pre existing connection', async () => {
     const connection = mysql.createConnection({
       host: 'localhost',
@@ -414,14 +438,7 @@ describe('MySQLEvents', () => {
       host: 'localhost',
       user: 'root',
       password: 'root',
-    }, {
-      startAtEnd: true,
-      excludedSchemas: {
-        mysql: true,
-      },
     });
-
-    await instance.start();
 
     instance.addTrigger({
       name: 'Test',
@@ -446,4 +463,67 @@ describe('MySQLEvents', () => {
 
     await instance.stop();
   }).timeout(10000);
+
+  it('should throw an error when adding duplicated trigger name for a statement', async () => {
+    const instance = new MySQLEvents({
+      host: 'localhost',
+      user: 'root',
+      password: 'root',
+    });
+
+    instance.addTrigger({
+      name: 'Test',
+      expression: `${TEST_SCHEMA}.${TEST_TABLE}`,
+      statement: MySQLEvents.STATEMENTS.ALL,
+      callback: () => {},
+    });
+
+    expect(() => instance.addTrigger({
+      name: 'Test',
+      expression: `${TEST_SCHEMA}.${TEST_TABLE}`,
+      statement: MySQLEvents.STATEMENTS.ALL,
+      callback: () => {},
+    })).to.throw(Error);
+  });
+
+  it('should emit an event when a trigger produces an error', async () => {
+    const instance = new MySQLEvents({
+      host: 'localhost',
+      user: 'root',
+      password: 'root',
+    }, {
+      startAtEnd: true,
+      excludedSchemas: {
+        mysql: true,
+      },
+    });
+
+    await instance.start();
+
+    await delay();
+
+    let error = null;
+    instance.on(MySQLEvents.EVENTS.TRIGGER_ERROR, (err) => {
+      error = err;
+    });
+
+    instance.addTrigger({
+      name: 'Test',
+      expression: `${TEST_SCHEMA}.${TEST_TABLE}`,
+      statement: MySQLEvents.STATEMENTS.ALL,
+      callback: () => {
+        throw new Error('Error');
+      },
+    });
+
+    await executeQuery(instance.connection, `USE ${TEST_SCHEMA};`);
+    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE} VALUES ('test1', 'test2');`);
+
+    await delay();
+
+    expect(error).to.be.an('object');
+    error.trigger.should.be.an('object');
+    error.error.should.be.an('Error');
+  });
+
 });
