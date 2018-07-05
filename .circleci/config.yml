@@ -1,9 +1,12 @@
 version: 2
 jobs:
   build:
-    machine: true
     docker:
       - image: circleci/node:8.11.3
+      - image: circleci/mysql:5.5
+        environment:
+          MYSQL_ROOT_PASSWORD: 'root'
+        command: [--server-id=1, --log-bin=/var/lib/mysql/mysql-bin.log, --binlog-format=row]
 
     working_directory: ~/mysql-events
 
