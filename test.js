@@ -147,6 +147,16 @@ describe('MySQLEvents', () => {
     await instance.stop();
   }).timeout(10000);
 
+  it('should connect and disconnect from MySQL using a connection string', async () => {
+    const instance = new MySQLEvents(`mysql://root:root@localhost/${TEST_SCHEMA}`);
+
+    await instance.start();
+
+    await delay();
+
+    await instance.stop();
+  }).timeout(10000);
+
   it('should catch an event through an INSERT trigger', async () => {
     const instance = new MySQLEvents({
       host: 'localhost',
