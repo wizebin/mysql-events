@@ -131,7 +131,7 @@ describe('MySQLEvents', () => {
     await delay();
 
     await instance.stop();
-  }).timeout(3000);
+  }).timeout(10000);
 
   it('should connect and disconnect from MySQL using a dsn', async () => {
     const instance = new MySQLEvents({
@@ -145,7 +145,7 @@ describe('MySQLEvents', () => {
     await delay();
 
     await instance.stop();
-  }).timeout(3000);
+  }).timeout(10000);
 
   it('should catch an event through an INSERT trigger', async () => {
     const instance = new MySQLEvents({
