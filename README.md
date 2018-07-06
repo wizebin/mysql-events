@@ -1,5 +1,5 @@
 # mysql-events
-[![CircleCI()](https://circleci.com/gh/rodrigogs/mysql-events)](https://circleci.com/gh/rodrigogs/mysql-events.svg)
+[![CircleCI](https://circleci.com/gh/rodrigogs/mysql-events.svg)](https://circleci.com/gh/rodrigogs/mysql-events)
 [![Code Climate](https://codeclimate.com/github/rodrigogs/mysql-events/badges/gpa.svg)](https://codeclimate.com/github/rodrigogs/mysql-events)
 [![Test Coverage](https://codeclimate.com/github/rodrigogs/mysql-events/badges/coverage.svg)](https://codeclimate.com/github/rodrigogs/mysql-events/coverage)
 
