@@ -7,6 +7,8 @@ A [node.js](https://nodejs.org) package that watches a MySQL database and runs c
 
 This package is based on the [original ZongJi](https://github.com/nevill/zongji) and the [original mysql-events](https://github.com/spencerlambert/mysql-events) modules. Please make sure that you meet the requirements described at [ZongJi](https://github.com/rodrigogs/zongji#installation), like MySQL binlog etc.
 
+Check [@kuroski](https://github.com/kuroski)'s [mysql-events-ui](https://github.com/kuroski/mysql-events-ui) for a `mysql-events` UI implementation.
+
 ## Install
 ```sh
 npm install @rodrigogs/mysql-events
