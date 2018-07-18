@@ -1,4 +1,4 @@
-/* eslint-disable padded-blocks,no-unused-expressions */
+/* eslint-disable padded-blocks,no-unused-expressions,no-await-in-loop */
 
 const chai = require('chai');
 const mysql = require('mysql');
@@ -6,8 +6,10 @@ const MySQLEvents = require('./lib');
 
 const { expect } = chai;
 
-const TEST_SCHEMA = 'testSchema';
-const TEST_TABLE = 'testTable';
+const TEST_SCHEMA_1 = 'testSchema1';
+const TEST_SCHEMA_2 = 'testSchema2';
+const TEST_TABLE_1 = 'testTable1';
+const TEST_TABLE_2 = 'testTable2';
 const TEST_COLUMN_1 = 'column1';
 const TEST_COLUMN_2 = 'column2';
 
@@ -51,10 +53,11 @@ const grantPrivileges = async () => {
   }
 };
 
-const createSchema = async () => {
+const createSchemas = async () => {
   const conn = await getConnection();
   try {
-    await executeQuery(conn, `CREATE DATABASE ${TEST_SCHEMA};`);
+    await executeQuery(conn, `CREATE DATABASE IF NOT EXISTS ${TEST_SCHEMA_1};`);
+    await executeQuery(conn, `CREATE DATABASE IF NOT EXISTS ${TEST_SCHEMA_2};`);
   } catch (err) {
     throw err;
   } finally {
@@ -62,10 +65,11 @@ const createSchema = async () => {
   }
 };
 
-const dropSchema = async () => {
+const dropSchemas = async () => {
   const conn = await getConnection();
   try {
-    await executeQuery(conn, `DROP DATABASE ${TEST_SCHEMA};`);
+    await executeQuery(conn, `DROP DATABASE IF EXISTS ${TEST_SCHEMA_1};`);
+    await executeQuery(conn, `DROP DATABASE IF EXISTS ${TEST_SCHEMA_2};`);
   } catch (err) {
     throw err;
   } finally {
@@ -76,8 +80,12 @@ const dropSchema = async () => {
 const createTables = async () => {
   const conn = await getConnection();
   try {
-    await executeQuery(conn, `USE ${TEST_SCHEMA};`);
-    await executeQuery(conn, `CREATE TABLE ${TEST_TABLE} (${TEST_COLUMN_1} varchar(255), ${TEST_COLUMN_2} varchar(255));`);
+    await executeQuery(conn, `USE ${TEST_SCHEMA_1};`);
+    await executeQuery(conn, `CREATE TABLE IF NOT EXISTS ${TEST_TABLE_1} (${TEST_COLUMN_1} varchar(255), ${TEST_COLUMN_2} varchar(255));`);
+    await executeQuery(conn, `CREATE TABLE IF NOT EXISTS ${TEST_TABLE_2} (${TEST_COLUMN_1} varchar(255), ${TEST_COLUMN_2} varchar(255));`);
+    await executeQuery(conn, `USE ${TEST_SCHEMA_2};`);
+    await executeQuery(conn, `CREATE TABLE IF NOT EXISTS ${TEST_TABLE_1} (${TEST_COLUMN_1} varchar(255), ${TEST_COLUMN_2} varchar(255));`);
+    await executeQuery(conn, `CREATE TABLE IF NOT EXISTS ${TEST_TABLE_2} (${TEST_COLUMN_1} varchar(255), ${TEST_COLUMN_2} varchar(255));`);
   } catch (err) {
     throw err;
   } finally {
@@ -88,8 +96,9 @@ const createTables = async () => {
 const dropTables = async () => {
   const conn = await getConnection();
   try {
-    await executeQuery(conn, `USE ${TEST_SCHEMA};`);
-    await executeQuery(conn, `DROP TABLE ${TEST_TABLE};`);
+    await executeQuery(conn, `USE ${TEST_SCHEMA_1};`);
+    await executeQuery(conn, `DROP TABLE IF EXISTS ${TEST_TABLE_1};`);
+    await executeQuery(conn, `DROP TABLE IF EXISTS ${TEST_TABLE_2};`);
   } catch (err) {
     throw err;
   } finally {
@@ -99,7 +108,7 @@ const dropTables = async () => {
 
 before(async () => {
   chai.should();
-  await createSchema();
+  await createSchemas();
   await grantPrivileges();
 });
 
@@ -112,7 +121,7 @@ afterEach(async () => {
 });
 
 after(async () => {
-  await dropSchema();
+  await dropSchemas();
 });
 
 describe('MySQLEvents', () => {
@@ -172,7 +181,7 @@ describe('MySQLEvents', () => {
   }).timeout(10000);
 
   it('should connect and disconnect from MySQL using a connection string', async () => {
-    const instance = new MySQLEvents(`mysql://root:root@localhost/${TEST_SCHEMA}`);
+    const instance = new MySQLEvents(`mysql://root:root@localhost/${TEST_SCHEMA_1}`);
 
     await instance.start();
 
@@ -198,17 +207,15 @@ describe('MySQLEvents', () => {
     let triggerEvent = null;
     instance.addTrigger({
       name: 'Test',
-      expression: `${TEST_SCHEMA}.${TEST_TABLE}`,
+      expression: `${TEST_SCHEMA_1}.${TEST_TABLE_1}`,
       statement: MySQLEvents.STATEMENTS.INSERT,
       callback: (event) => {
         triggerEvent = event;
       },
     });
 
-    await delay(1000);
-
-    await executeQuery(instance.connection, `USE ${TEST_SCHEMA};`);
-    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE} VALUES ('test1', 'test2');`);
+    await executeQuery(instance.connection, `USE ${TEST_SCHEMA_1};`);
+    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE_1} VALUES ('test1', 'test2');`);
 
     await delay(1000);
 
@@ -223,10 +230,10 @@ describe('MySQLEvents', () => {
     triggerEvent.timestamp.should.be.a('number');
 
     triggerEvent.should.have.ownPropertyDescriptor('table');
-    triggerEvent.table.should.be.a('string').equals(TEST_TABLE);
+    triggerEvent.table.should.be.a('string').equals(TEST_TABLE_1);
 
     triggerEvent.should.have.ownPropertyDescriptor('schema');
-    triggerEvent.schema.should.be.a('string').equals(TEST_SCHEMA);
+    triggerEvent.schema.should.be.a('string').equals(TEST_SCHEMA_1);
 
     triggerEvent.should.have.ownPropertyDescriptor('nextPosition');
     triggerEvent.nextPosition.should.be.a('number');
@@ -263,18 +270,16 @@ describe('MySQLEvents', () => {
     let triggerEvent = null;
     instance.addTrigger({
       name: 'Test',
-      expression: `${TEST_SCHEMA}.${TEST_TABLE}`,
+      expression: `${TEST_SCHEMA_1}.${TEST_TABLE_1}`,
       statement: MySQLEvents.STATEMENTS.UPDATE,
       callback: (event) => {
         triggerEvent = event;
       },
     });
 
-    await delay(1000);
-
-    await executeQuery(instance.connection, `USE ${TEST_SCHEMA};`);
-    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE} VALUES ('test1', 'test2');`);
-    await executeQuery(instance.connection, `UPDATE ${TEST_TABLE} SET ${TEST_COLUMN_1} = 'test3', ${TEST_COLUMN_2} = 'test4';`);
+    await executeQuery(instance.connection, `USE ${TEST_SCHEMA_1};`);
+    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE_1} VALUES ('test1', 'test2');`);
+    await executeQuery(instance.connection, `UPDATE ${TEST_TABLE_1} SET ${TEST_COLUMN_1} = 'test3', ${TEST_COLUMN_2} = 'test4';`);
 
     await delay(1000);
 
@@ -289,10 +294,10 @@ describe('MySQLEvents', () => {
     triggerEvent.timestamp.should.be.a('number');
 
     triggerEvent.should.have.ownPropertyDescriptor('table');
-    triggerEvent.table.should.be.a('string').equals(TEST_TABLE);
+    triggerEvent.table.should.be.a('string').equals(TEST_TABLE_1);
 
     triggerEvent.should.have.ownPropertyDescriptor('schema');
-    triggerEvent.schema.should.be.a('string').equals(TEST_SCHEMA);
+    triggerEvent.schema.should.be.a('string').equals(TEST_SCHEMA_1);
 
     triggerEvent.should.have.ownPropertyDescriptor('nextPosition');
     triggerEvent.nextPosition.should.be.a('number');
@@ -335,18 +340,16 @@ describe('MySQLEvents', () => {
     let triggerEvent = null;
     instance.addTrigger({
       name: 'Test',
-      expression: `${TEST_SCHEMA}.${TEST_TABLE}`,
+      expression: `${TEST_SCHEMA_1}.${TEST_TABLE_1}`,
       statement: MySQLEvents.STATEMENTS.DELETE,
       callback: (event) => {
         triggerEvent = event;
       },
     });
 
-    await delay(1000);
-
-    await executeQuery(instance.connection, `USE ${TEST_SCHEMA};`);
-    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE} VALUES ('test1', 'test2');`);
-    await executeQuery(instance.connection, `DELETE FROM ${TEST_TABLE} WHERE ${TEST_COLUMN_1} = 'test1' AND ${TEST_COLUMN_2} = 'test2';`);
+    await executeQuery(instance.connection, `USE ${TEST_SCHEMA_1};`);
+    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE_1} VALUES ('test1', 'test2');`);
+    await executeQuery(instance.connection, `DELETE FROM ${TEST_TABLE_1} WHERE ${TEST_COLUMN_1} = 'test1' AND ${TEST_COLUMN_2} = 'test2';`);
 
     await delay(1000);
 
@@ -361,10 +364,10 @@ describe('MySQLEvents', () => {
     triggerEvent.timestamp.should.be.a('number');
 
     triggerEvent.should.have.ownPropertyDescriptor('table');
-    triggerEvent.table.should.be.a('string').equals(TEST_TABLE);
+    triggerEvent.table.should.be.a('string').equals(TEST_TABLE_1);
 
     triggerEvent.should.have.ownPropertyDescriptor('schema');
-    triggerEvent.schema.should.be.a('string').equals(TEST_SCHEMA);
+    triggerEvent.schema.should.be.a('string').equals(TEST_SCHEMA_1);
 
     triggerEvent.should.have.ownPropertyDescriptor('nextPosition');
     triggerEvent.nextPosition.should.be.a('number');
@@ -403,19 +406,17 @@ describe('MySQLEvents', () => {
     const triggerEvents = [];
     instance.addTrigger({
       name: 'Test',
-      expression: `${TEST_SCHEMA}.${TEST_TABLE}`,
+      expression: `${TEST_SCHEMA_1}.${TEST_TABLE_1}`,
       statement: MySQLEvents.STATEMENTS.ALL,
       callback: (event) => {
         triggerEvents.push(event);
       },
     });
 
-    await delay(1000);
-
-    await executeQuery(instance.connection, `USE ${TEST_SCHEMA};`);
-    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE} VALUES ('test1', 'test2');`);
-    await executeQuery(instance.connection, `UPDATE ${TEST_TABLE} SET ${TEST_COLUMN_1} = 'test3', ${TEST_COLUMN_2} = 'test4';`);
-    await executeQuery(instance.connection, `DELETE FROM ${TEST_TABLE} WHERE ${TEST_COLUMN_1} = 'test3' AND ${TEST_COLUMN_2} = 'test4';`);
+    await executeQuery(instance.connection, `USE ${TEST_SCHEMA_1};`);
+    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE_1} VALUES ('test1', 'test2');`);
+    await executeQuery(instance.connection, `UPDATE ${TEST_TABLE_1} SET ${TEST_COLUMN_1} = 'test3', ${TEST_COLUMN_2} = 'test4';`);
+    await executeQuery(instance.connection, `DELETE FROM ${TEST_TABLE_1} WHERE ${TEST_COLUMN_1} = 'test3' AND ${TEST_COLUMN_2} = 'test4';`);
 
     await delay(1000);
 
@@ -442,24 +443,24 @@ describe('MySQLEvents', () => {
 
     instance.addTrigger({
       name: 'Test',
-      expression: `${TEST_SCHEMA}.${TEST_TABLE}`,
+      expression: `${TEST_SCHEMA_1}.${TEST_TABLE_1}`,
       statement: MySQLEvents.STATEMENTS.ALL,
       callback: () => {},
     });
 
-    instance.triggers[`${TEST_SCHEMA}.${TEST_TABLE}`].statements[MySQLEvents.STATEMENTS.ALL].should.be.an('array').that.is.not.empty;
+    instance.expressions[`${TEST_SCHEMA_1}.${TEST_TABLE_1}`].statements[MySQLEvents.STATEMENTS.ALL].should.be.an('array').that.is.not.empty;
 
-    instance.triggers[`${TEST_SCHEMA}.${TEST_TABLE}`].statements[MySQLEvents.STATEMENTS.ALL][0].should.be.an('object');
-    instance.triggers[`${TEST_SCHEMA}.${TEST_TABLE}`].statements[MySQLEvents.STATEMENTS.ALL][0].name.should.be.a('string').equals('Test');
-    instance.triggers[`${TEST_SCHEMA}.${TEST_TABLE}`].statements[MySQLEvents.STATEMENTS.ALL][0].callback.should.be.a('function');
+    instance.expressions[`${TEST_SCHEMA_1}.${TEST_TABLE_1}`].statements[MySQLEvents.STATEMENTS.ALL][0].should.be.an('object');
+    instance.expressions[`${TEST_SCHEMA_1}.${TEST_TABLE_1}`].statements[MySQLEvents.STATEMENTS.ALL][0].name.should.be.a('string').equals('Test');
+    instance.expressions[`${TEST_SCHEMA_1}.${TEST_TABLE_1}`].statements[MySQLEvents.STATEMENTS.ALL][0].callback.should.be.a('function');
 
     instance.removeTrigger({
       name: 'Test',
-      expression: `${TEST_SCHEMA}.${TEST_TABLE}`,
+      expression: `${TEST_SCHEMA_1}.${TEST_TABLE_1}`,
       statement: MySQLEvents.STATEMENTS.ALL,
     });
 
-    expect(instance.triggers[`${TEST_SCHEMA}.${TEST_TABLE}`].statements[MySQLEvents.STATEMENTS.ALL][0]).to.be.an('undefined');
+    expect(instance.expressions[`${TEST_SCHEMA_1}.${TEST_TABLE_1}`].statements[MySQLEvents.STATEMENTS.ALL][0]).to.be.an('undefined');
 
     await instance.stop();
   }).timeout(10000);
@@ -473,14 +474,14 @@ describe('MySQLEvents', () => {
 
     instance.addTrigger({
       name: 'Test',
-      expression: `${TEST_SCHEMA}.${TEST_TABLE}`,
+      expression: `${TEST_SCHEMA_1}.${TEST_TABLE_1}`,
       statement: MySQLEvents.STATEMENTS.ALL,
       callback: () => {},
     });
 
     expect(() => instance.addTrigger({
       name: 'Test',
-      expression: `${TEST_SCHEMA}.${TEST_TABLE}`,
+      expression: `${TEST_SCHEMA_1}.${TEST_TABLE_1}`,
       statement: MySQLEvents.STATEMENTS.ALL,
       callback: () => {},
     })).to.throw(Error);
@@ -509,15 +510,15 @@ describe('MySQLEvents', () => {
 
     instance.addTrigger({
       name: 'Test',
-      expression: `${TEST_SCHEMA}.${TEST_TABLE}`,
+      expression: `${TEST_SCHEMA_1}.${TEST_TABLE_1}`,
       statement: MySQLEvents.STATEMENTS.ALL,
       callback: () => {
         throw new Error('Error');
       },
     });
 
-    await executeQuery(instance.connection, `USE ${TEST_SCHEMA};`);
-    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE} VALUES ('test1', 'test2');`);
+    await executeQuery(instance.connection, `USE ${TEST_SCHEMA_1};`);
+    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE_1} VALUES ('test1', 'test2');`);
 
     await delay();
 
@@ -525,5 +526,158 @@ describe('MySQLEvents', () => {
     error.trigger.should.be.an('object');
     error.error.should.be.an('Error');
   });
+
+  it('should receive events from multiple schemas', async () => {
+    const instance = new MySQLEvents({
+      host: 'localhost',
+      user: 'root',
+      password: 'root',
+    }, {
+      startAtEnd: true,
+      excludedSchemas: {
+        mysql: true,
+      },
+    });
+
+    await instance.start();
+
+    const triggeredEvents = [];
+    instance.addTrigger({
+      name: 'Test',
+      expression: `${TEST_SCHEMA_1}`,
+      statement: MySQLEvents.STATEMENTS.UPDATE,
+      callback: (event) => {
+        triggeredEvents.push(event);
+      },
+    });
+    instance.addTrigger({
+      name: 'Test2',
+      expression: `${TEST_SCHEMA_2}`,
+      statement: MySQLEvents.STATEMENTS.ALL,
+      callback: (event) => {
+        triggeredEvents.push(event);
+      },
+    });
+
+    await executeQuery(instance.connection, `USE ${TEST_SCHEMA_1};`);
+    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE_1} VALUES ('test1', 'test2');`);
+    await executeQuery(instance.connection, `UPDATE ${TEST_TABLE_1} SET ${TEST_COLUMN_1} = 'test3', ${TEST_COLUMN_2} = 'test4';`);
+
+    await executeQuery(instance.connection, `USE ${TEST_SCHEMA_2};`);
+    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE_1} VALUES ('test1', 'test2');`);
+    await executeQuery(instance.connection, `UPDATE ${TEST_TABLE_1} SET ${TEST_COLUMN_1} = 'test3', ${TEST_COLUMN_2} = 'test4';`);
+
+    await delay(1000);
+
+    if (!triggeredEvents.length) throw new Error('No trigger was caught');
+  }).timeout(15000);
+
+  // it('should receive events for 20 minutes', async () => {
+  //   const instance = new MySQLEvents({
+  //     host: 'localhost',
+  //     user: 'root',
+  //     password: 'root',
+  //   }, {
+  //     startAtEnd: true,
+  //     excludedSchemas: {
+  //       mysql: true,
+  //     },
+  //   });
+  //
+  //   await instance.start();
+  //
+  //   const triggeredEvents = [];
+  //   instance.addTrigger({
+  //     name: 'Test',
+  //     expression: `${TEST_SCHEMA_1}.${TEST_TABLE_1}`,
+  //     statement: MySQLEvents.STATEMENTS.UPDATE,
+  //     callback: (event) => {
+  //       triggeredEvents.push(event);
+  //     },
+  //   });
+  //   instance.addTrigger({
+  //     name: 'Test2',
+  //     expression: `${TEST_SCHEMA_2}.${TEST_TABLE_2}`,
+  //     statement: MySQLEvents.STATEMENTS.ALL,
+  //     callback: (event) => {
+  //       triggeredEvents.push(event);
+  //     },
+  //   });
+  //
+  //   await executeQuery(instance.connection, `USE ${TEST_SCHEMA_1};`);
+  //   await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE_1} VALUES ('test1', 'test2');`);
+  //   await executeQuery(instance.connection, `UPDATE ${TEST_TABLE_1} SET ${TEST_COLUMN_1} = 'test3', ${TEST_COLUMN_2} = 'test4';`);
+  //
+  //   await executeQuery(instance.connection, `USE ${TEST_SCHEMA_2};`);
+  //   await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE_2} VALUES ('test1', 'test2');`);
+  //   await executeQuery(instance.connection, `UPDATE ${TEST_TABLE_1} SET ${TEST_COLUMN_1} = 'test3', ${TEST_COLUMN_2} = 'test4';`);
+  //
+  //   await delay(1000);
+  //
+  //   if (!triggeredEvents.length) throw new Error('No trigger was caught');
+  // }).timeout(15000);
+  //
+  // it('should receive events from multiple tables', async () => {
+  //   const instance = new MySQLEvents({
+  //     host: 'localhost',
+  //     user: 'root',
+  //     password: 'root',
+  //   }, {
+  //     startAtEnd: true,
+  //     excludedSchemas: {
+  //       mysql: true,
+  //     },
+  //   });
+  //
+  //   await instance.start();
+  //
+  //   const triggeredEvents = [];
+  //   instance.addTrigger({
+  //     name: 'Test',
+  //     expression: `${TEST_SCHEMA_1}.${TEST_TABLE_1}`,
+  //     statement: MySQLEvents.STATEMENTS.INSERT,
+  //     callback: (event) => {
+  //       triggeredEvents.push(event);
+  //     },
+  //   });
+  //   instance.addTrigger({
+  //     name: 'Test2',
+  //     expression: `${TEST_SCHEMA_2}.${TEST_TABLE_2}`,
+  //     statement: MySQLEvents.STATEMENTS.INSERT,
+  //     callback: (event) => {
+  //       triggeredEvents.push(event);
+  //     },
+  //   });
+  //
+  //   await delay(1000);
+  //
+  //   let running = true;
+  //   setTimeout(() => {
+  //     running = false;
+  //   }, 19 * (1000 * 60));
+  //
+  //   let index = 0;
+  //   do {
+  //     const testValue1 = `test-${index}`;
+  //     const testValue2 = `test-${index + 1}`;
+  //     const testValue3 = `test-${index + 2}`;
+  //     const testValue4 = `test-${index + 3}`;
+  //
+  //     await executeQuery(instance.connection, `USE ${TEST_SCHEMA_1};`);
+  //     await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE_1} VALUES ('${testValue1}', '${testValue2}');`);
+  //     await executeQuery(instance.connection, `UPDATE ${TEST_TABLE_1} SET ${TEST_COLUMN_1} = '${testValue3}', ${TEST_COLUMN_2} = '${testValue4}';`);
+  //
+  //     await executeQuery(instance.connection, `USE ${TEST_SCHEMA_2};`);
+  //     await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE_2} VALUES ('${testValue1}', '${testValue1}');`);
+  //     await executeQuery(instance.connection, `UPDATE ${TEST_TABLE_1} SET ${TEST_COLUMN_1} = '${testValue3}', ${TEST_COLUMN_2} = '${testValue4}';`);
+  //
+  //     await delay(1000);
+  //
+  //     index += 1;
+  //
+  //     const events = triggeredEvents.splice(0);
+  //     events.should.be.an('array').to.have.lengthOf(2);
+  //   } while (running);
+  // }).timeout(20 * (1000 * 60));
 
 });
