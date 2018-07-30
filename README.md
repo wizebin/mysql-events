@@ -49,7 +49,7 @@ const program = async () => {
 };
 
 program()
-  .then(() => console.log('Waiting for database vents...'))
+  .then(() => console.log('Waiting for database events...'))
   .catch(console.error);
 ```
 [Check the examples](https://github.com/rodrigogs/mysql-events/examples)
