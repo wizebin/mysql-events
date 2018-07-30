@@ -39,7 +39,7 @@ const program = async () => {
     name: 'TEST',
     expression: '*',
     statement: MySQLEvents.STATEMENTS.ALL,
-    callback: (event) => { // You will receive the events here
+    onEvent: (event) => { // You will receive the events here
       console.log(event);
     },
   });
@@ -100,15 +100,27 @@ program()
       .then(() => console.log('I\'m stopped!'))
       .catch(err => console.error('Something bad happened', err));
     ```
-  ### #addTrigger({ name, expression, statement, callback })
-  - Adds a trigger for the given expression/statement and calls the callback function when the event happens
+  ### #pause()
+  - pause function pauses MySQL connection until `#resume()` is called, this it useful when you're receiving more data than you can handle at the time
+    ```javascript
+    myInstance.pause();
+    ```
+  ### #resume()
+  - resume function resumes a paused MySQL connection, so it starts to generate binlog events again
+    ```javascript
+    myInstance.resume();
+    ```
+  ### #addTrigger({ name, expression, statement, onEvent })
+  - Adds a trigger for the given expression/statement and calls the `onEvent` function when the event happens
     ```javascript
     instance.addTrigger({
       name: 'MY_TRIGGER',
       expression: 'MY_SCHEMA.MY_TABLE.MY_COLUMN',
       statement: MySQLEvents.STATEMENTS.INSERT,
-      callback: (event) => {
-        // Here you will get the events for the given expression/statement
+      onEvent: async (event) => {
+        // Here you will get the events for the given expression/statement.
+        // This could be an async function.
+        await doSomething(event);
       },
     });
     ```
@@ -172,11 +184,11 @@ program()
     });
     ```
     [Allowed statements](https://github.com/rodrigogs/mysql-events/blob/master/lib/STATEMENTS.enum.js)
-  - The `callback` argument is a function where the trigger events should be threated
+  - The `onEvent` argument is a function where the trigger events should be threated
     ```javascript
     instance.addTrigger({
       ...
-      callback: (event) => {
+      onEvent: (event) => {
         console.log(event); // { type, schema, table, affectedRows: [], affectedColumns: [], timestamp, }
       },
       ...
@@ -227,6 +239,7 @@ It has the following structure:
   ],
   timestamp: 1530645380029,
   nextPosition: 1343,
+  binlogName: 'bin.001',
 }
 ```
 
