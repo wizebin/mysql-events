@@ -5,13 +5,13 @@
 
 A [node.js](https://nodejs.org) package that watches a MySQL database and runs callbacks on matched events.
 
-This package is based on the [original ZongJi](https://github.com/nevill/zongji) and the [original mysql-events](https://github.com/spencerlambert/mysql-events) modules. Please make sure that you meet the requirements described at [ZongJi](https://github.com/involves/zongji#installation), like MySQL binlog etc.
+This package is based on the [original ZongJi](https://github.com/nevill/zongji) and the [original mysql-events](https://github.com/spencerlambert/mysql-events) modules. Please make sure that you meet the requirements described at [ZongJi](https://github.com/rodrigogs/zongji#installation), like MySQL binlog etc.
 
 Check [@kuroski](https://github.com/kuroski)'s [mysql-events-ui](https://github.com/kuroski/mysql-events-ui) for a `mysql-events` UI implementation.
 
 ## Install
 ```sh
-npm install @involves/mysql-events
+npm install @rodrigogs/mysql-events
 ```
 
 ## Quick Start
@@ -246,4 +246,4 @@ It has the following structure:
 **Make sure the database user has the privilege to read the binlog on database that you want to watch on.**
 
 ## LICENSE
-[BSD-3-Clause](https://github.com/involves/mysql-events/blob/master/LICENSE) © Involves Tecnologia
+[BSD-3-Clause](https://github.com/rodrigogs/mysql-events/blob/master/LICENSE) © Rodrigo Gomes da Silva
