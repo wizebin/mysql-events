@@ -1,7 +1,7 @@
 # mysql-events
-![CircleCI](https://circleci.com/gh/involvestecnologia/mysql-events.svg)
-[![Code Climate](https://codeclimate.com/github/involvestecnologia/mysql-events/badges/gpa.svg)](https://codeclimate.com/github/involvestecnologia/mysql-events)
-[![Test Coverage](https://codeclimate.com/github/involvestecnologia/mysql-events/badges/coverage.svg)](https://codeclimate.com/github/involvestecnologia/mysql-events/coverage)
+[![CircleCI](https://circleci.com/gh/rodrigogs/mysql-events.svg)](https://circleci.com/gh/rodrigogs/mysql-events)
+[![Code Climate](https://codeclimate.com/github/rodrigogs/mysql-events/badges/gpa.svg)](https://codeclimate.com/github/rodrigogs/mysql-events)
+[![Test Coverage](https://codeclimate.com/github/rodrigogs/mysql-events/badges/coverage.svg)](https://codeclimate.com/github/rodrigogs/mysql-events/coverage)
 
 A [node.js](https://nodejs.org) package that watches a MySQL database and runs callbacks on matched events.
 
@@ -17,7 +17,7 @@ npm install @involves/mysql-events
 ## Quick Start
 ```javascript
 const mysql = require('mysql');
-const MySQLEvents = require('@involves/mysql-events');
+const MySQLEvents = require('@rodrigogs/mysql-events');
 
 const program = async () => {
   const connection = mysql.createConnection({
@@ -52,7 +52,7 @@ program()
   .then(() => console.log('Waiting for database vents...'))
   .catch(console.error);
 ```
-[Check the examples](https://github.com/involvestecnologia/mysql-events/examples)
+[Check the examples](https://github.com/rodrigogs/mysql-events/examples)
 
 ## Usage
   ### #constructor(connection, options)
@@ -183,7 +183,7 @@ program()
       ...
     });
     ```
-    [Allowed statements](https://github.com/involvestecnologia/mysql-events/blob/master/lib/STATEMENTS.enum.js)
+    [Allowed statements](https://github.com/rodrigogs/mysql-events/blob/master/lib/STATEMENTS.enum.js)
   - The `onEvent` argument is a function where the trigger events should be threated
     ```javascript
     instance.addTrigger({
@@ -209,7 +209,7 @@ program()
     instance.on(MySQLEvents.EVENTS.CONNECTION_ERROR, (err) => console.log('Connection error', err));
     instance.on(MySQLEvents.EVENTS.ZONGJI_ERROR, (err) => console.log('ZongJi error', err));
     ```
-  [Available events](https://github.com/involvestecnologia/mysql-events/blob/master/lib/STATEMENTS.enum.js)
+  [Available events](https://github.com/rodrigogs/mysql-events/blob/master/lib/STATEMENTS.enum.js)
 
 ## Tigger event object
 It has the following structure:
