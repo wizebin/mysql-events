@@ -15,7 +15,7 @@ const program = async () => {
     name: 'Whole database instance',
     expression: '*',
     statement: MySQLEvents.STATEMENTS.ALL,
-    callback: (event) => {
+    onEvent: (event) => {
       console.log(event);
     },
   });
