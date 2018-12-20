@@ -1,6 +1,6 @@
 {
   "name": "@rodrigogs/mysql-events",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "license": "BSD-3-Clause",
   "description": "A node.js package that watches a MySQL database and runs callbacks on matched events like updates on tables and/or specific columns.",
   "homepage": "https://github.com/rodrigogs/mysql-events",
@@ -38,6 +38,6 @@
     "nyc": "^12.0.2"
   },
   "engines": {
-    "node": ">=7.6.0 < 9"
+    "node": ">=7.6.0"
   }
 }
