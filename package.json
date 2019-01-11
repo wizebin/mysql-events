@@ -1,6 +1,6 @@
 {
   "name": "@rodrigogs/mysql-events",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "license": "BSD-3-Clause",
   "description": "A node.js package that watches a MySQL database and runs callbacks on matched events like updates on tables and/or specific columns.",
   "homepage": "https://github.com/rodrigogs/mysql-events",
@@ -22,20 +22,20 @@
     "coverage": "nyc --reporter=lcov npm test"
   },
   "dependencies": {
-    "@rodrigogs/zongji": "^0.4.12",
-    "debug": "^3.1.0",
+    "@rodrigogs/zongji": "^0.4.14",
+    "debug": "^4.1.1",
     "debuggler": "^1.0.0",
     "mysql": "^2.16.0"
   },
   "devDependencies": {
-    "chai": "^4.1.2",
-    "codeclimate-test-reporter": "^0.5.0",
+    "chai": "^4.2.0",
+    "codeclimate-test-reporter": "^0.5.1",
     "dotenv-cli": "^1.4.0",
-    "eslint": "^5.3.0",
-    "eslint-config-airbnb-base": "^13.0.0",
-    "eslint-plugin-import": "^2.13.0",
+    "eslint": "^5.12.0",
+    "eslint-config-airbnb-base": "^13.1.0",
+    "eslint-plugin-import": "^2.14.0",
     "mocha": "^5.2.0",
-    "nyc": "^12.0.2"
+    "nyc": "^13.1.0"
   },
   "engines": {
     "node": ">=7.6.0"
