@@ -209,7 +209,7 @@ program()
     instance.on(MySQLEvents.EVENTS.CONNECTION_ERROR, (err) => console.log('Connection error', err));
     instance.on(MySQLEvents.EVENTS.ZONGJI_ERROR, (err) => console.log('ZongJi error', err));
     ```
-  [Available events](https://github.com/rodrigogs/mysql-events/blob/master/lib/STATEMENTS.enum.js)
+  [Available events](https://github.com/rodrigogs/mysql-events/blob/master/lib/EVENTS.enum.js)
 
 ## Tigger event object
 It has the following structure:
