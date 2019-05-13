@@ -30,7 +30,7 @@ jobs:
             - node_modules
           key: lib-dependencies-{{ checksum "package.json" }}
 
-      - test:
+      - run:
           name: Run tests
           command: ./scripts/test.sh
 
