@@ -32,7 +32,9 @@ jobs:
 
       - run:
           name: Run tests
-          command: ./scripts/test.sh
+          command: |
+            chmod +x scripts/test.sh
+            ./scripts/test.sh
 
 #      - run:
 #          name: Run tests/coverage
