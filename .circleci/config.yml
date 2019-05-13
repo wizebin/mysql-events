@@ -1,15 +1,8 @@
 version: 2
 jobs:
   build:
-    docker:
-      - image: circleci/node:8.11.3
-      - image: circleci/mysql:5.5
-        environment:
-          MYSQL_ROOT_PASSWORD: 'root'
-        command: [--server-id=1, --log-bin=/var/lib/mysql/mysql-bin.log, --binlog-format=row]
-
+    machine: true
     working_directory: ~/mysql-events
-
     steps:
       - checkout
 
@@ -28,9 +21,9 @@ jobs:
           name: Install dependencies
           command: npm install
 
-      - run:
-          name: Wait for DB
-          command: dockerize -wait tcp://127.0.0.1:3306 -timeout 120s
+#      - run:
+#          name: Wait for DB
+#          command: dockerize -wait tcp://127.0.0.1:3306 -timeout 120s
 
       - save_cache:
           paths:
@@ -38,8 +31,14 @@ jobs:
           key: lib-dependencies-{{ checksum "package.json" }}
 
       - run:
-          name: Run tests/coverage
+          name: Run tests
           command: |
-            npm run coverage
-            ./cc-test-reporter format-coverage -t lcov -o coverage.json coverage/lcov.info
-            ./cc-test-reporter upload-coverage -i coverage.json
+            chmod +x scripts/test.sh
+            ./scripts/test.sh
+
+#      - run:
+#          name: Run tests/coverage
+#          command: |
+#            npm run coverage
+#            ./cc-test-reporter format-coverage -t lcov -o coverage.json coverage/lcov.info
+#            ./cc-test-reporter upload-coverage -i coverage.json
