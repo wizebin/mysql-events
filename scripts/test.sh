@@ -6,13 +6,16 @@ my_dir="$(dirname "$0")";
 ### PROGRAM
 docker-compose up -d;
 echo 'Waiting for docker services...';
-while ! docker exec mysql-events_mysql55_1 mysqladmin ping -h'127.0.0.1' --silent; do
+while ! docker exec mysql55 mysqladmin ping -h'127.0.0.1' --silent; do
   sleep 3
 done
-while ! docker exec mysql-events_mysql56_1 mysqladmin ping -h'127.0.0.1' --silent; do
+while ! docker exec mysql56 mysqladmin ping -h'127.0.0.1' --silent; do
   sleep 3
 done
-while ! docker exec mysql-events_mysql80_1 mysqladmin ping -h'127.0.0.1' --silent; do
+while ! docker exec mysql57 mysqladmin ping -h'127.0.0.1' --silent; do
+  sleep 3
+done
+while ! docker exec mysql80 mysqladmin ping -h'127.0.0.1' --silent; do
   sleep 3
 done
 
