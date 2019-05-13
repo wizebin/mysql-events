@@ -1,15 +1,8 @@
 version: 2
 jobs:
   build:
-    docker:
-      - image: circleci/node:8.11.3
-      - image: circleci/mysql:5.5
-        environment:
-          MYSQL_ROOT_PASSWORD: 'root'
-        command: [--server-id=1, --log-bin=/var/lib/mysql/mysql-bin.log, --binlog-format=row]
-
+    machine: true
     working_directory: ~/mysql-events
-
     steps:
       - checkout
 
@@ -37,9 +30,13 @@ jobs:
             - node_modules
           key: lib-dependencies-{{ checksum "package.json" }}
 
-      - run:
-          name: Run tests/coverage
-          command: |
-            npm run coverage
-            ./cc-test-reporter format-coverage -t lcov -o coverage.json coverage/lcov.info
-            ./cc-test-reporter upload-coverage -i coverage.json
+      - test:
+          name: Run tests
+          command: ./scripts/test.sh
+
+#      - run:
+#          name: Run tests/coverage
+#          command: |
+#            npm run coverage
+#            ./cc-test-reporter format-coverage -t lcov -o coverage.json coverage/lcov.info
+#            ./cc-test-reporter upload-coverage -i coverage.json

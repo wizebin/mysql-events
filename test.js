@@ -6,6 +6,7 @@ const MySQLEvents = require('./lib');
 
 const { expect } = chai;
 
+const DATABASE_PORT = process.env.DATABASE_PORT || 3306;
 const TEST_SCHEMA_1 = 'testSchema1';
 const TEST_SCHEMA_2 = 'testSchema2';
 const TEST_TABLE_1 = 'testTable1';
@@ -17,11 +18,17 @@ const delay = (timeout = 500) => new Promise((resolve) => {
   setTimeout(resolve, timeout);
 });
 
+let _serverId = 0;
+const getServerId = () => {
+  return _serverId += 1;
+};
+
 const getConnection = () => {
   const connection = mysql.createConnection({
     host: 'localhost',
     user: 'root',
     password: 'root',
+    port: DATABASE_PORT,
   });
 
   return new Promise((resolve, reject) => connection.connect((err) => {
@@ -54,6 +61,7 @@ const grantPrivileges = async () => {
 };
 
 const createSchemas = async () => {
+  console.log('Creating connection...');
   const conn = await getConnection();
   try {
     await executeQuery(conn, `CREATE DATABASE IF NOT EXISTS ${TEST_SCHEMA_1};`);
@@ -80,12 +88,10 @@ const dropSchemas = async () => {
 const createTables = async () => {
   const conn = await getConnection();
   try {
-    await executeQuery(conn, `USE ${TEST_SCHEMA_1};`);
-    await executeQuery(conn, `CREATE TABLE IF NOT EXISTS ${TEST_TABLE_1} (${TEST_COLUMN_1} varchar(255), ${TEST_COLUMN_2} varchar(255));`);
-    await executeQuery(conn, `CREATE TABLE IF NOT EXISTS ${TEST_TABLE_2} (${TEST_COLUMN_1} varchar(255), ${TEST_COLUMN_2} varchar(255));`);
-    await executeQuery(conn, `USE ${TEST_SCHEMA_2};`);
-    await executeQuery(conn, `CREATE TABLE IF NOT EXISTS ${TEST_TABLE_1} (${TEST_COLUMN_1} varchar(255), ${TEST_COLUMN_2} varchar(255));`);
-    await executeQuery(conn, `CREATE TABLE IF NOT EXISTS ${TEST_TABLE_2} (${TEST_COLUMN_1} varchar(255), ${TEST_COLUMN_2} varchar(255));`);
+    await executeQuery(conn, `CREATE TABLE IF NOT EXISTS ${TEST_SCHEMA_1}.${TEST_TABLE_1} (${TEST_COLUMN_1} varchar(255), ${TEST_COLUMN_2} varchar(255));`);
+    await executeQuery(conn, `CREATE TABLE IF NOT EXISTS ${TEST_SCHEMA_1}.${TEST_TABLE_2} (${TEST_COLUMN_1} varchar(255), ${TEST_COLUMN_2} varchar(255));`);
+    await executeQuery(conn, `CREATE TABLE IF NOT EXISTS ${TEST_SCHEMA_2}.${TEST_TABLE_1} (${TEST_COLUMN_1} varchar(255), ${TEST_COLUMN_2} varchar(255));`);
+    await executeQuery(conn, `CREATE TABLE IF NOT EXISTS ${TEST_SCHEMA_2}.${TEST_TABLE_2} (${TEST_COLUMN_1} varchar(255), ${TEST_COLUMN_2} varchar(255));`);
   } catch (err) {
     throw err;
   } finally {
@@ -96,9 +102,10 @@ const createTables = async () => {
 const dropTables = async () => {
   const conn = await getConnection();
   try {
-    await executeQuery(conn, `USE ${TEST_SCHEMA_1};`);
-    await executeQuery(conn, `DROP TABLE IF EXISTS ${TEST_TABLE_1};`);
-    await executeQuery(conn, `DROP TABLE IF EXISTS ${TEST_TABLE_2};`);
+    await executeQuery(conn, `DROP TABLE IF EXISTS ${TEST_SCHEMA_1}.${TEST_TABLE_1};`);
+    await executeQuery(conn, `DROP TABLE IF EXISTS ${TEST_SCHEMA_1}.${TEST_TABLE_2};`);
+    await executeQuery(conn, `DROP TABLE IF EXISTS ${TEST_SCHEMA_2}.${TEST_TABLE_1};`);
+    await executeQuery(conn, `DROP TABLE IF EXISTS ${TEST_SCHEMA_2}.${TEST_TABLE_2};`);
   } catch (err) {
     throw err;
   } finally {
@@ -106,7 +113,9 @@ const dropTables = async () => {
   }
 };
 
-before(async () => {
+beforeAll(async () => {
+  console.log(`Runnning tests on port ${DATABASE_PORT}...`);
+
   chai.should();
   await createSchemas();
   await grantPrivileges();
@@ -120,7 +129,7 @@ afterEach(async () => {
   await dropTables();
 });
 
-after(async () => {
+afterAll(async () => {
   await dropSchemas();
 });
 
@@ -155,6 +164,7 @@ describe('MySQLEvents', () => {
       host: 'localhost',
       user: 'root',
       password: 'root',
+      port: DATABASE_PORT,
     });
 
     const instance = new MySQLEvents(connection);
@@ -164,13 +174,14 @@ describe('MySQLEvents', () => {
     await delay();
 
     await instance.stop();
-  }).timeout(10000);
+  }, 10000);
 
   it('should connect and disconnect from MySQL using a dsn', async () => {
     const instance = new MySQLEvents({
       host: 'localhost',
       user: 'root',
       password: 'root',
+      port: DATABASE_PORT,
     });
 
     await instance.start();
@@ -178,24 +189,26 @@ describe('MySQLEvents', () => {
     await delay();
 
     await instance.stop();
-  }).timeout(10000);
+  }, 10000);
 
   it('should connect and disconnect from MySQL using a connection string', async () => {
-    const instance = new MySQLEvents(`mysql://root:root@localhost/${TEST_SCHEMA_1}`);
+    const instance = new MySQLEvents(`mysql://root:root@localhost:${DATABASE_PORT}/${TEST_SCHEMA_1}`);
 
     await instance.start();
 
     await delay();
 
     await instance.stop();
-  }).timeout(10000);
+  }, 10000);
 
-  it('should catch an event through an INSERT trigger', async () => {
+  it('should catch an event using an INSERT trigger', async () => {
     const instance = new MySQLEvents({
       host: 'localhost',
       user: 'root',
       password: 'root',
+      port: DATABASE_PORT,
     }, {
+      serverId: getServerId(),
       startAtEnd: true,
       excludedSchemas: {
         mysql: true,
@@ -204,65 +217,66 @@ describe('MySQLEvents', () => {
 
     await instance.start();
 
-    let triggerEvent = null;
+    const triggerEvents = [];
     instance.addTrigger({
       name: 'Test',
       expression: `${TEST_SCHEMA_1}.${TEST_TABLE_1}`,
       statement: MySQLEvents.STATEMENTS.INSERT,
-      onEvent: (event) => {
-        triggerEvent = event;
-      },
+      onEvent: event => triggerEvents.push(event),
     });
 
-    instance.on(MySQLEvents.EVENTS.TRIGGER_ERROR, console.error)
-    instance.on(MySQLEvents.EVENTS.CONNECTION_ERROR, console.error)
-    instance.on(MySQLEvents.EVENTS.ZONGJI_ERROR, console.error)
+    instance.on(MySQLEvents.EVENTS.TRIGGER_ERROR, console.error);
+    instance.on(MySQLEvents.EVENTS.CONNECTION_ERROR, console.error);
+    instance.on(MySQLEvents.EVENTS.ZONGJI_ERROR, console.error);
 
-    await executeQuery(instance.connection, `USE ${TEST_SCHEMA_1};`);
-    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE_1} VALUES ('test1', 'test2');`);
+    await delay(5000);
 
-    await delay(1000);
+    await executeQuery(instance.connection, `INSERT INTO ${TEST_SCHEMA_1}.${TEST_TABLE_1} VALUES ('test1', 'test2');`);
 
-    if (!triggerEvent) throw new Error('No trigger was caught');
+    await delay(5000);
 
-    triggerEvent.should.be.an('object');
+    if (!triggerEvents.length) throw new Error('No trigger was caught');
 
-    triggerEvent.should.have.ownPropertyDescriptor('type');
-    triggerEvent.type.should.be.a('string').equals('INSERT');
+    triggerEvents[0].should.be.an('object');
 
-    triggerEvent.should.have.ownPropertyDescriptor('timestamp');
-    triggerEvent.timestamp.should.be.a('number');
+    triggerEvents[0].should.have.ownPropertyDescriptor('type');
+    triggerEvents[0].type.should.be.a('string').equals('INSERT');
 
-    triggerEvent.should.have.ownPropertyDescriptor('table');
-    triggerEvent.table.should.be.a('string').equals(TEST_TABLE_1);
+    triggerEvents[0].should.have.ownPropertyDescriptor('timestamp');
+    triggerEvents[0].timestamp.should.be.a('number');
 
-    triggerEvent.should.have.ownPropertyDescriptor('schema');
-    triggerEvent.schema.should.be.a('string').equals(TEST_SCHEMA_1);
+    triggerEvents[0].should.have.ownPropertyDescriptor('table');
+    triggerEvents[0].table.should.be.a('string').equals(TEST_TABLE_1);
 
-    triggerEvent.should.have.ownPropertyDescriptor('nextPosition');
-    triggerEvent.nextPosition.should.be.a('number');
+    triggerEvents[0].should.have.ownPropertyDescriptor('schema');
+    triggerEvents[0].schema.should.be.a('string').equals(TEST_SCHEMA_1);
 
-    triggerEvent.should.have.ownPropertyDescriptor('affectedRows');
-    triggerEvent.affectedRows.should.be.an('array').to.have.lengthOf(1);
-    triggerEvent.affectedRows[0].should.be.an('object');
-    triggerEvent.affectedRows[0].should.have.ownPropertyDescriptor('after');
-    triggerEvent.affectedRows[0].after.should.be.an('object');
-    triggerEvent.affectedRows[0].after.should.have.ownPropertyDescriptor(TEST_COLUMN_1);
-    triggerEvent.affectedRows[0].after[TEST_COLUMN_1].should.be.a('string').equals('test1');
-    triggerEvent.affectedRows[0].after.should.have.ownPropertyDescriptor(TEST_COLUMN_2);
-    triggerEvent.affectedRows[0].after[TEST_COLUMN_2].should.be.a('string').equals('test2');
-    triggerEvent.affectedRows[0].should.have.ownPropertyDescriptor('before');
-    expect(triggerEvent.affectedRows[0].before).to.be.an('undefined');
+    triggerEvents[0].should.have.ownPropertyDescriptor('nextPosition');
+    triggerEvents[0].nextPosition.should.be.a('number');
+
+    triggerEvents[0].should.have.ownPropertyDescriptor('affectedRows');
+    triggerEvents[0].affectedRows.should.be.an('array').to.have.lengthOf(1);
+    triggerEvents[0].affectedRows[0].should.be.an('object');
+    triggerEvents[0].affectedRows[0].should.have.ownPropertyDescriptor('after');
+    triggerEvents[0].affectedRows[0].after.should.be.an('object');
+    triggerEvents[0].affectedRows[0].after.should.have.ownPropertyDescriptor(TEST_COLUMN_1);
+    triggerEvents[0].affectedRows[0].after[TEST_COLUMN_1].should.be.a('string').equals('test1');
+    triggerEvents[0].affectedRows[0].after.should.have.ownPropertyDescriptor(TEST_COLUMN_2);
+    triggerEvents[0].affectedRows[0].after[TEST_COLUMN_2].should.be.a('string').equals('test2');
+    triggerEvents[0].affectedRows[0].should.have.ownPropertyDescriptor('before');
+    expect(triggerEvents[0].affectedRows[0].before).to.be.an('undefined');
 
     await instance.stop();
-  }).timeout(10000);
+  }, 15000);
 
-  it('should catch an event through an UPDATE trigger', async () => {
+  it('should catch an event using an UPDATE trigger', async () => {
     const instance = new MySQLEvents({
       host: 'localhost',
       user: 'root',
       password: 'root',
+      port: DATABASE_PORT,
     }, {
+      serverId: getServerId(),
       startAtEnd: true,
       excludedSchemas: {
         mysql: true,
@@ -271,68 +285,73 @@ describe('MySQLEvents', () => {
 
     await instance.start();
 
-    let triggerEvent = null;
+    const triggerEvents = [];
     instance.addTrigger({
       name: 'Test',
       expression: `${TEST_SCHEMA_1}.${TEST_TABLE_1}`,
       statement: MySQLEvents.STATEMENTS.UPDATE,
-      onEvent: (event) => {
-        triggerEvent = event;
-      },
+      onEvent: event => triggerEvents.push(event),
     });
 
-    await executeQuery(instance.connection, `USE ${TEST_SCHEMA_1};`);
-    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE_1} VALUES ('test1', 'test2');`);
-    await executeQuery(instance.connection, `UPDATE ${TEST_TABLE_1} SET ${TEST_COLUMN_1} = 'test3', ${TEST_COLUMN_2} = 'test4';`);
+    instance.on(MySQLEvents.EVENTS.TRIGGER_ERROR, console.error);
+    instance.on(MySQLEvents.EVENTS.CONNECTION_ERROR, console.error);
+    instance.on(MySQLEvents.EVENTS.ZONGJI_ERROR, console.error);
 
-    await delay(1000);
+    await delay(5000);
 
-    if (!triggerEvent) throw new Error('No trigger was caught');
+    await executeQuery(instance.connection, `INSERT INTO ${TEST_SCHEMA_1}.${TEST_TABLE_1} VALUES ('test1', 'test2');`);
+    await executeQuery(instance.connection, `UPDATE ${TEST_SCHEMA_1}.${TEST_TABLE_1} SET ${TEST_COLUMN_1} = 'test3', ${TEST_COLUMN_2} = 'test4';`);
 
-    triggerEvent.should.be.an('object');
+    await delay(5000);
 
-    triggerEvent.should.have.ownPropertyDescriptor('type');
-    triggerEvent.type.should.be.a('string').equals('UPDATE');
+    if (!triggerEvents.length) throw new Error('No trigger was caught');
 
-    triggerEvent.should.have.ownPropertyDescriptor('timestamp');
-    triggerEvent.timestamp.should.be.a('number');
+    triggerEvents[0].should.be.an('object');
 
-    triggerEvent.should.have.ownPropertyDescriptor('table');
-    triggerEvent.table.should.be.a('string').equals(TEST_TABLE_1);
+    triggerEvents[0].should.have.ownPropertyDescriptor('type');
+    triggerEvents[0].type.should.be.a('string').equals('UPDATE');
 
-    triggerEvent.should.have.ownPropertyDescriptor('schema');
-    triggerEvent.schema.should.be.a('string').equals(TEST_SCHEMA_1);
+    triggerEvents[0].should.have.ownPropertyDescriptor('timestamp');
+    triggerEvents[0].timestamp.should.be.a('number');
 
-    triggerEvent.should.have.ownPropertyDescriptor('nextPosition');
-    triggerEvent.nextPosition.should.be.a('number');
+    triggerEvents[0].should.have.ownPropertyDescriptor('table');
+    triggerEvents[0].table.should.be.a('string').equals(TEST_TABLE_1);
 
-    triggerEvent.should.have.ownPropertyDescriptor('affectedRows');
-    triggerEvent.affectedRows.should.be.an('array').to.have.lengthOf(1);
-    triggerEvent.affectedRows[0].should.be.an('object');
+    triggerEvents[0].should.have.ownPropertyDescriptor('schema');
+    triggerEvents[0].schema.should.be.a('string').equals(TEST_SCHEMA_1);
 
-    triggerEvent.affectedRows[0].should.have.ownPropertyDescriptor('after');
-    triggerEvent.affectedRows[0].after.should.be.an('object');
-    triggerEvent.affectedRows[0].after.should.have.ownPropertyDescriptor(TEST_COLUMN_1);
-    triggerEvent.affectedRows[0].after[TEST_COLUMN_1].should.be.a('string').equals('test3');
-    triggerEvent.affectedRows[0].after.should.have.ownPropertyDescriptor(TEST_COLUMN_2);
-    triggerEvent.affectedRows[0].after[TEST_COLUMN_2].should.be.a('string').equals('test4');
+    triggerEvents[0].should.have.ownPropertyDescriptor('nextPosition');
+    triggerEvents[0].nextPosition.should.be.a('number');
 
-    triggerEvent.affectedRows[0].should.have.ownPropertyDescriptor('before');
-    triggerEvent.affectedRows[0].before.should.be.an('object');
-    triggerEvent.affectedRows[0].before.should.have.ownPropertyDescriptor(TEST_COLUMN_1);
-    triggerEvent.affectedRows[0].before[TEST_COLUMN_1].should.be.a('string').equals('test1');
-    triggerEvent.affectedRows[0].before.should.have.ownPropertyDescriptor(TEST_COLUMN_2);
-    triggerEvent.affectedRows[0].before[TEST_COLUMN_2].should.be.a('string').equals('test2');
+    triggerEvents[0].should.have.ownPropertyDescriptor('affectedRows');
+    triggerEvents[0].affectedRows.should.be.an('array').to.have.lengthOf(1);
+    triggerEvents[0].affectedRows[0].should.be.an('object');
+
+    triggerEvents[0].affectedRows[0].should.have.ownPropertyDescriptor('after');
+    triggerEvents[0].affectedRows[0].after.should.be.an('object');
+    triggerEvents[0].affectedRows[0].after.should.have.ownPropertyDescriptor(TEST_COLUMN_1);
+    triggerEvents[0].affectedRows[0].after[TEST_COLUMN_1].should.be.a('string').equals('test3');
+    triggerEvents[0].affectedRows[0].after.should.have.ownPropertyDescriptor(TEST_COLUMN_2);
+    triggerEvents[0].affectedRows[0].after[TEST_COLUMN_2].should.be.a('string').equals('test4');
+
+    triggerEvents[0].affectedRows[0].should.have.ownPropertyDescriptor('before');
+    triggerEvents[0].affectedRows[0].before.should.be.an('object');
+    triggerEvents[0].affectedRows[0].before.should.have.ownPropertyDescriptor(TEST_COLUMN_1);
+    triggerEvents[0].affectedRows[0].before[TEST_COLUMN_1].should.be.a('string').equals('test1');
+    triggerEvents[0].affectedRows[0].before.should.have.ownPropertyDescriptor(TEST_COLUMN_2);
+    triggerEvents[0].affectedRows[0].before[TEST_COLUMN_2].should.be.a('string').equals('test2');
 
     await instance.stop();
-  }).timeout(10000);
+  }, 15000);
 
-  it('should catch an event through an DELETE trigger', async () => {
+  it('should catch an event using a DELETE trigger', async () => {
     const instance = new MySQLEvents({
       host: 'localhost',
       user: 'root',
       password: 'root',
+      port: DATABASE_PORT,
     }, {
+      serverId: getServerId(),
       startAtEnd: true,
       excludedSchemas: {
         mysql: true,
@@ -341,64 +360,65 @@ describe('MySQLEvents', () => {
 
     await instance.start();
 
-    let triggerEvent = null;
+    const triggerEvents = [];
     instance.addTrigger({
       name: 'Test',
       expression: `${TEST_SCHEMA_1}.${TEST_TABLE_1}`,
       statement: MySQLEvents.STATEMENTS.DELETE,
-      onEvent: (event) => {
-        triggerEvent = event;
-      },
+      onEvent: event => triggerEvents.push(event),
     });
 
-    await executeQuery(instance.connection, `USE ${TEST_SCHEMA_1};`);
-    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE_1} VALUES ('test1', 'test2');`);
-    await executeQuery(instance.connection, `DELETE FROM ${TEST_TABLE_1} WHERE ${TEST_COLUMN_1} = 'test1' AND ${TEST_COLUMN_2} = 'test2';`);
+    await delay(5000);
 
-    await delay(1000);
+    await executeQuery(instance.connection, `INSERT INTO ${TEST_SCHEMA_1}.${TEST_TABLE_1} VALUES ('test1', 'test2');`);
+    await executeQuery(instance.connection, `DELETE FROM ${TEST_SCHEMA_1}.${TEST_TABLE_1} WHERE ${TEST_COLUMN_1} = 'test1' AND ${TEST_COLUMN_2} = 'test2';`);
 
-    if (!triggerEvent) throw new Error('No trigger was caught');
+    await delay(5000);
 
-    triggerEvent.should.be.an('object');
+    if (!triggerEvents.length) throw new Error('No trigger was caught');
 
-    triggerEvent.should.have.ownPropertyDescriptor('type');
-    triggerEvent.type.should.be.a('string').equals('DELETE');
+    triggerEvents[0].should.be.an('object');
 
-    triggerEvent.should.have.ownPropertyDescriptor('timestamp');
-    triggerEvent.timestamp.should.be.a('number');
+    triggerEvents[0].should.have.ownPropertyDescriptor('type');
+    triggerEvents[0].type.should.be.a('string').equals('DELETE');
 
-    triggerEvent.should.have.ownPropertyDescriptor('table');
-    triggerEvent.table.should.be.a('string').equals(TEST_TABLE_1);
+    triggerEvents[0].should.have.ownPropertyDescriptor('timestamp');
+    triggerEvents[0].timestamp.should.be.a('number');
 
-    triggerEvent.should.have.ownPropertyDescriptor('schema');
-    triggerEvent.schema.should.be.a('string').equals(TEST_SCHEMA_1);
+    triggerEvents[0].should.have.ownPropertyDescriptor('table');
+    triggerEvents[0].table.should.be.a('string').equals(TEST_TABLE_1);
 
-    triggerEvent.should.have.ownPropertyDescriptor('nextPosition');
-    triggerEvent.nextPosition.should.be.a('number');
+    triggerEvents[0].should.have.ownPropertyDescriptor('schema');
+    triggerEvents[0].schema.should.be.a('string').equals(TEST_SCHEMA_1);
 
-    triggerEvent.should.have.ownPropertyDescriptor('affectedRows');
-    triggerEvent.affectedRows.should.be.an('array').to.have.lengthOf(1);
-    triggerEvent.affectedRows[0].should.be.an('object');
+    triggerEvents[0].should.have.ownPropertyDescriptor('nextPosition');
+    triggerEvents[0].nextPosition.should.be.a('number');
 
-    triggerEvent.affectedRows[0].should.have.ownPropertyDescriptor('after');
-    expect(triggerEvent.affectedRows[0].after).to.be.an('undefined');
+    triggerEvents[0].should.have.ownPropertyDescriptor('affectedRows');
+    triggerEvents[0].affectedRows.should.be.an('array').to.have.lengthOf(1);
+    triggerEvents[0].affectedRows[0].should.be.an('object');
 
-    triggerEvent.affectedRows[0].should.have.ownPropertyDescriptor('before');
-    triggerEvent.affectedRows[0].before.should.be.an('object');
-    triggerEvent.affectedRows[0].before.should.have.ownPropertyDescriptor(TEST_COLUMN_1);
-    triggerEvent.affectedRows[0].before[TEST_COLUMN_1].should.be.a('string').equals('test1');
-    triggerEvent.affectedRows[0].before.should.have.ownPropertyDescriptor(TEST_COLUMN_2);
-    triggerEvent.affectedRows[0].before[TEST_COLUMN_2].should.be.a('string').equals('test2');
+    triggerEvents[0].affectedRows[0].should.have.ownPropertyDescriptor('after');
+    expect(triggerEvents[0].affectedRows[0].after).to.be.an('undefined');
+
+    triggerEvents[0].affectedRows[0].should.have.ownPropertyDescriptor('before');
+    triggerEvents[0].affectedRows[0].before.should.be.an('object');
+    triggerEvents[0].affectedRows[0].before.should.have.ownPropertyDescriptor(TEST_COLUMN_1);
+    triggerEvents[0].affectedRows[0].before[TEST_COLUMN_1].should.be.a('string').equals('test1');
+    triggerEvents[0].affectedRows[0].before.should.have.ownPropertyDescriptor(TEST_COLUMN_2);
+    triggerEvents[0].affectedRows[0].before[TEST_COLUMN_2].should.be.a('string').equals('test2');
 
     await instance.stop();
-  }).timeout(10000);
+  }, 15000);
 
-  it('should catch events through an ALL trigger', async () => {
+  it('should catch events using an ALL trigger', async () => {
     const instance = new MySQLEvents({
       host: 'localhost',
       user: 'root',
       password: 'root',
+      port: DATABASE_PORT,
     }, {
+      serverId: getServerId(),
       startAtEnd: true,
       excludedSchemas: {
         mysql: true,
@@ -412,15 +432,14 @@ describe('MySQLEvents', () => {
       name: 'Test',
       expression: `${TEST_SCHEMA_1}.${TEST_TABLE_1}`,
       statement: MySQLEvents.STATEMENTS.ALL,
-      onEvent: (event) => {
-        triggerEvents.push(event);
-      },
+      onEvent: event => triggerEvents.push(event),
     });
 
-    await executeQuery(instance.connection, `USE ${TEST_SCHEMA_1};`);
-    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE_1} VALUES ('test1', 'test2');`);
-    await executeQuery(instance.connection, `UPDATE ${TEST_TABLE_1} SET ${TEST_COLUMN_1} = 'test3', ${TEST_COLUMN_2} = 'test4';`);
-    await executeQuery(instance.connection, `DELETE FROM ${TEST_TABLE_1} WHERE ${TEST_COLUMN_1} = 'test3' AND ${TEST_COLUMN_2} = 'test4';`);
+    await delay(5000);
+
+    await executeQuery(instance.connection, `INSERT INTO ${TEST_SCHEMA_1}.${TEST_TABLE_1} VALUES ('test1', 'test2');`);
+    await executeQuery(instance.connection, `UPDATE ${TEST_SCHEMA_1}.${TEST_TABLE_1} SET ${TEST_COLUMN_1} = 'test3', ${TEST_COLUMN_2} = 'test4';`);
+    await executeQuery(instance.connection, `DELETE FROM ${TEST_SCHEMA_1}.${TEST_TABLE_1} WHERE ${TEST_COLUMN_1} = 'test3' AND ${TEST_COLUMN_2} = 'test4';`);
 
     await delay(1000);
 
@@ -436,13 +455,14 @@ describe('MySQLEvents', () => {
     triggerEvents[2].type.should.be.a('string').equals('DELETE');
 
     await instance.stop();
-  }).timeout(10000);
+  }, 15000);
 
   it('should remove a previously added event trigger', async () => {
     const instance = new MySQLEvents({
       host: 'localhost',
       user: 'root',
       password: 'root',
+      port: DATABASE_PORT,
     });
 
     instance.addTrigger({
@@ -467,13 +487,14 @@ describe('MySQLEvents', () => {
     expect(instance.expressions[`${TEST_SCHEMA_1}.${TEST_TABLE_1}`].statements[MySQLEvents.STATEMENTS.ALL][0]).to.be.an('undefined');
 
     await instance.stop();
-  }).timeout(10000);
+  }, 10000);
 
   it('should throw an error when adding duplicated trigger name for a statement', async () => {
     const instance = new MySQLEvents({
       host: 'localhost',
       user: 'root',
       password: 'root',
+      port: DATABASE_PORT,
     });
 
     instance.addTrigger({
@@ -496,7 +517,9 @@ describe('MySQLEvents', () => {
       host: 'localhost',
       user: 'root',
       password: 'root',
+      port: DATABASE_PORT,
     }, {
+      serverId: getServerId(),
       startAtEnd: true,
       excludedSchemas: {
         mysql: true,
@@ -521,22 +544,25 @@ describe('MySQLEvents', () => {
       },
     });
 
-    await executeQuery(instance.connection, `USE ${TEST_SCHEMA_1};`);
-    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE_1} VALUES ('test1', 'test2');`);
+    await delay(5000);
 
-    await delay();
+    await executeQuery(instance.connection, `INSERT INTO ${TEST_SCHEMA_1}.${TEST_TABLE_1} VALUES ('test1', 'test2');`);
+
+    await delay(1000);
 
     expect(error).to.be.an('object');
     error.trigger.should.be.an('object');
     error.error.should.be.an('Error');
-  });
+  }, 10000);
 
   it('should receive events from multiple schemas', async () => {
     const instance = new MySQLEvents({
       host: 'localhost',
       user: 'root',
       password: 'root',
+      port: DATABASE_PORT,
     }, {
+      serverId: getServerId(),
       startAtEnd: true,
       excludedSchemas: {
         mysql: true,
@@ -550,44 +576,43 @@ describe('MySQLEvents', () => {
       name: 'Test',
       expression: `${TEST_SCHEMA_1}`,
       statement: MySQLEvents.STATEMENTS.UPDATE,
-      onEvent: (event) => {
-        triggeredEvents.push(event);
-      },
+      onEvent: event => triggeredEvents.push(event),
     });
     instance.addTrigger({
       name: 'Test2',
       expression: `${TEST_SCHEMA_2}`,
       statement: MySQLEvents.STATEMENTS.ALL,
-      onEvent: (event) => {
-        triggeredEvents.push(event);
-      },
+      onEvent: event => triggeredEvents.push(event),
     });
 
-    await executeQuery(instance.connection, `USE ${TEST_SCHEMA_1};`);
-    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE_1} VALUES ('test1', 'test2');`);
-    await executeQuery(instance.connection, `UPDATE ${TEST_TABLE_1} SET ${TEST_COLUMN_1} = 'test3', ${TEST_COLUMN_2} = 'test4';`);
+    await delay(5000);
 
-    await executeQuery(instance.connection, `USE ${TEST_SCHEMA_2};`);
-    await executeQuery(instance.connection, `INSERT INTO ${TEST_TABLE_1} VALUES ('test1', 'test2');`);
-    await executeQuery(instance.connection, `UPDATE ${TEST_TABLE_1} SET ${TEST_COLUMN_1} = 'test3', ${TEST_COLUMN_2} = 'test4';`);
+    await executeQuery(instance.connection, `INSERT INTO ${TEST_SCHEMA_1}.${TEST_TABLE_1} VALUES ('test1', 'test2');`);
+    await executeQuery(instance.connection, `UPDATE ${TEST_SCHEMA_1}.${TEST_TABLE_1} SET ${TEST_COLUMN_1} = 'test3', ${TEST_COLUMN_2} = 'test4';`);
+
+    await executeQuery(instance.connection, `INSERT INTO ${TEST_SCHEMA_2}.${TEST_TABLE_1} VALUES ('test1', 'test2');`);
+    await executeQuery(instance.connection, `UPDATE ${TEST_SCHEMA_2}.${TEST_TABLE_1} SET ${TEST_COLUMN_1} = 'test3', ${TEST_COLUMN_2} = 'test4';`);
 
     await delay(1000);
 
     if (!triggeredEvents.length) throw new Error('No trigger was caught');
-  }).timeout(15000);
+  }, 20000);
 
   it('should pause and resume connection', async () => {
     const connection = mysql.createConnection({
       host: 'localhost',
       user: 'root',
       password: 'root',
+      port: DATABASE_PORT,
     });
 
     const instance = new MySQLEvents({
       host: 'localhost',
       user: 'root',
       password: 'root',
+      port: DATABASE_PORT,
     }, {
+      serverId: getServerId(),
       startAtEnd: true,
       excludedSchemas: {
         mysql: true,
@@ -601,14 +626,13 @@ describe('MySQLEvents', () => {
       name: 'Test',
       expression: `${TEST_SCHEMA_1}`,
       statement: MySQLEvents.STATEMENTS.ALL,
-      onEvent: (event) => {
-        triggeredEvents.push(event);
-      },
+      onEvent: event => triggeredEvents.push(event),
     });
 
-    await executeQuery(connection, `USE ${TEST_SCHEMA_1};`);
-    await executeQuery(connection, `INSERT INTO ${TEST_TABLE_1} VALUES ('test1', 'test2');`);
-    await executeQuery(connection, `UPDATE ${TEST_TABLE_1} SET ${TEST_COLUMN_1} = 'test3', ${TEST_COLUMN_2} = 'test4';`);
+    await delay(5000);
+
+    await executeQuery(connection, `INSERT INTO ${TEST_SCHEMA_1}.${TEST_TABLE_1} VALUES ('test1', 'test2');`);
+    await executeQuery(connection, `UPDATE ${TEST_SCHEMA_1}.${TEST_TABLE_1} SET ${TEST_COLUMN_1} = 'test3', ${TEST_COLUMN_2} = 'test4';`);
 
     await delay(1000);
 
@@ -618,9 +642,8 @@ describe('MySQLEvents', () => {
     instance.pause();
     await delay(300);
 
-    await executeQuery(connection, `USE ${TEST_SCHEMA_1};`);
-    await executeQuery(connection, `INSERT INTO ${TEST_TABLE_1} VALUES ('test3', 'test4');`);
-    await executeQuery(connection, `UPDATE ${TEST_TABLE_1} SET ${TEST_COLUMN_1} = 'test4', ${TEST_COLUMN_2} = 'test5';`);
+    await executeQuery(connection, `INSERT INTO ${TEST_SCHEMA_1}.${TEST_TABLE_1} VALUES ('test3', 'test4');`);
+    await executeQuery(connection, `UPDATE ${TEST_SCHEMA_1}.${TEST_TABLE_1} SET ${TEST_COLUMN_1} = 'test4', ${TEST_COLUMN_2} = 'test5';`);
 
     await delay(1000);
 
@@ -631,6 +654,6 @@ describe('MySQLEvents', () => {
     await delay(1000);
 
     if (!triggeredEvents.length) throw new Error('No trigger was caught');
-  }).timeout(15000);
+  }, 20000);
 
 });

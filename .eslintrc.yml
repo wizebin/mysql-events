@@ -15,11 +15,12 @@ rules:
   max-len: off
   no-console: off
   no-continue: off
+  no-return-assign: off
 globals:
   process: on
   describe: on
-  before: on
-  after: on
+  beforeAll: on
+  afterAll: on
   beforeEach: on
   afterEach: on
   suite: on
