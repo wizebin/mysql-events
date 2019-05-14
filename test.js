@@ -7,6 +7,7 @@ const MySQLEvents = require('./lib');
 const { expect } = chai;
 
 const DATABASE_PORT = process.env.DATABASE_PORT || 3306;
+const IS_POOL = process.env.IS_POOL || false;
 const TEST_SCHEMA_1 = 'testSchema1';
 const TEST_SCHEMA_2 = 'testSchema2';
 const TEST_TABLE_1 = 'testTable1';
@@ -133,7 +134,7 @@ afterAll(async () => {
   await dropSchemas();
 });
 
-describe('MySQLEvents', () => {
+describe(`MySQLEvents using ${IS_POOL ? 'connection pool' : 'single connection'} on port ${DATABASE_PORT}`, () => {
 
   it('should expose EVENTS enum', async () => {
     MySQLEvents.EVENTS.should.be.an('object');
@@ -160,12 +161,22 @@ describe('MySQLEvents', () => {
   });
 
   it('should connect and disconnect from MySQL using a pre existing connection', async () => {
-    const connection = mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: 'root',
-      port: DATABASE_PORT,
-    });
+    let connection;
+    if (IS_POOL) {
+      connection = mysql.createPool({
+        host: 'localhost',
+        user: 'root',
+        password: 'root',
+        port: DATABASE_PORT,
+      });
+    } else {
+      connection = mysql.createConnection({
+        host: 'localhost',
+        user: 'root',
+        password: 'root',
+        port: DATABASE_PORT,
+      });
+    }
 
     const instance = new MySQLEvents(connection);
 
@@ -182,6 +193,7 @@ describe('MySQLEvents', () => {
       user: 'root',
       password: 'root',
       port: DATABASE_PORT,
+      isPool: IS_POOL,
     });
 
     await instance.start();
@@ -207,6 +219,7 @@ describe('MySQLEvents', () => {
       user: 'root',
       password: 'root',
       port: DATABASE_PORT,
+      isPool: IS_POOL,
     }, {
       serverId: getServerId(),
       startAtEnd: true,
@@ -275,6 +288,7 @@ describe('MySQLEvents', () => {
       user: 'root',
       password: 'root',
       port: DATABASE_PORT,
+      isPool: IS_POOL,
     }, {
       serverId: getServerId(),
       startAtEnd: true,
@@ -350,6 +364,7 @@ describe('MySQLEvents', () => {
       user: 'root',
       password: 'root',
       port: DATABASE_PORT,
+      isPool: IS_POOL,
     }, {
       serverId: getServerId(),
       startAtEnd: true,
@@ -417,6 +432,7 @@ describe('MySQLEvents', () => {
       user: 'root',
       password: 'root',
       port: DATABASE_PORT,
+      isPool: IS_POOL,
     }, {
       serverId: getServerId(),
       startAtEnd: true,
@@ -463,6 +479,7 @@ describe('MySQLEvents', () => {
       user: 'root',
       password: 'root',
       port: DATABASE_PORT,
+      isPool: IS_POOL,
     });
 
     instance.addTrigger({
@@ -495,6 +512,7 @@ describe('MySQLEvents', () => {
       user: 'root',
       password: 'root',
       port: DATABASE_PORT,
+      isPool: IS_POOL,
     });
 
     instance.addTrigger({
@@ -518,6 +536,7 @@ describe('MySQLEvents', () => {
       user: 'root',
       password: 'root',
       port: DATABASE_PORT,
+      isPool: IS_POOL,
     }, {
       serverId: getServerId(),
       startAtEnd: true,
@@ -561,6 +580,7 @@ describe('MySQLEvents', () => {
       user: 'root',
       password: 'root',
       port: DATABASE_PORT,
+      isPool: IS_POOL,
     }, {
       serverId: getServerId(),
       startAtEnd: true,
@@ -611,6 +631,7 @@ describe('MySQLEvents', () => {
       user: 'root',
       password: 'root',
       port: DATABASE_PORT,
+      isPool: IS_POOL,
     }, {
       serverId: getServerId(),
       startAtEnd: true,
