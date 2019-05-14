@@ -168,13 +168,6 @@ program()
       ...
     });
     ```
-    ```javascript
-    instance.addTrigger({
-      name: 'All database events for table USERS',
-      expression: '*.USERS',
-      ...
-    });
-    ```
   - The `statement` argument indicates in which database operation an event should be triggered
     ```javascript
     instance.addTrigger({
