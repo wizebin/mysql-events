@@ -11,13 +11,13 @@ Check [@kuroski](https://github.com/kuroski)'s [mysql-events-ui](https://github.
 
 ## Install
 ```sh
-npm install @rodrigogs/mysql-events
+npm install @raniaby/mysql-events
 ```
 
 ## Quick Start
 ```javascript
 const mysql = require('mysql');
-const MySQLEvents = require('@rodrigogs/mysql-events');
+const MySQLEvents = require('@raniaby/mysql-events');
 
 const program = async () => {
   const connection = mysql.createConnection({
@@ -52,7 +52,7 @@ program()
   .then(() => console.log('Waiting for database events...'))
   .catch(console.error);
 ```
-[Check the examples](https://github.com/rodrigogs/mysql-events/examples)
+[Check the examples](https://github.com/ranniaby/mysql-events/examples)
 
 ## Usage
   ### #constructor(connection, options)
