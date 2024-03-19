@@ -1,4 +1,4 @@
-const MySQLEvents = require('@rodrigogs/mysql-events');
+const MySQLEvents = require('@vishwassingh/zongji');
 
 const program = async () => {
   const instance = new MySQLEvents({
