@@ -1,7 +1,7 @@
 /* eslint-disable padded-blocks,no-unused-expressions,no-await-in-loop */
 
 const chai = require('chai');
-const mysql = require('mysql2');
+const mysql = require('@vlasky/mysql');
 const MySQLEvents = require('./lib');
 
 const { expect } = chai;
