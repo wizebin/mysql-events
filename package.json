@@ -28,9 +28,7 @@
   },
   "dependencies": {
     "@vishwassingh/zongji": "^0.5.10",
-    "@vlasky/mysql": "^2.18.6",
-    "debug": "^4.1.1",
-    "debuggler": "^1.0.0"
+    "@vlasky/mysql": "^2.18.6"
   },
   "devDependencies": {
     "chai": "^4.2.0",
