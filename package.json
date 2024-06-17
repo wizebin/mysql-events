@@ -1,9 +1,9 @@
 {
-  "name": "@raniaby/mysql-events",
+  "name": "@wizebin/mysql-events",
   "version": "0.9.0",
   "license": "BSD-3-Clause",
   "description": "A node.js package that watches a MySQL database and runs callbacks on matched events like updates on tables and/or specific columns.",
-  "homepage": "https://github.com/raniaby/mysql-events",
+  "homepage": "https://github.com/wizebin/mysql-events",
   "keywords": [
     "mysql",
     "events",
@@ -13,7 +13,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/raniaby/mysql-events"
+    "url": "https://github.com/wizebin/mysql-events"
   },
   "main": "index.js",
   "scripts": {
